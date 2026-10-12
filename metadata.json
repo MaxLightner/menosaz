@@ -1,0 +1,6 @@
+{
+  "name": "منویار - سامانه یکپارچه مدیریت رستوران پیچ شمرون",
+  "description": "پلتفرم ابری یکپارچه رستوران پیچ شمرون با منوی دیجیتال مشتری با QR، اپلیکیشن گارسون، مانیتور آشپزخانه KDS با کش پایدار آفلاین",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
