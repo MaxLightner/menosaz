@@ -741,3 +741,4 @@ export const CustomerApp: React.FC = () => {
     </div>
   );
 };
+

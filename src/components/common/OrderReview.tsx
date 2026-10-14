@@ -1,0 +1,2 @@
+import React from 'react';import {Order} from '../../types';
+export function OrderReview({order}:{order:Order}){return <div className="order-review"><p>سفارش میز {order.tableNumber} را دوباره بررسی کن.</p>{order.customerNotes&&<p className="staff-note">مشتری: {order.customerNotes}</p>}<ul>{order.items.map(i=><li key={i.id}><strong>{i.quantity} × {i.productName}</strong>{i.selectedOptions?.map((x,j)=><small key={j}>{x.groupTitle}: {x.optionName}</small>)}{i.notes&&<small>مشتری: {i.notes}</small>}{i.waiterNotes&&<small>گارسون: {i.waiterNotes}</small>}</li>)}</ul></div>;}

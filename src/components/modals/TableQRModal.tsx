@@ -9,12 +9,12 @@ interface TableQRModalProps {
 }
 
 export const TableQRModal: React.FC<TableQRModalProps> = ({ isOpen, onClose, initialTable = 4 }) => {
-  const { servicePoints, setCurrentView, setSelectedTableNumber, showToast } = useApp();
+  const { business,activeMenuId,servicePoints, setCurrentView, setSelectedTableNumber, showToast } = useApp();
   const [selectedTable, setSelectedTable] = useState<number>(initialTable);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const currentPoint = servicePoints.find(sp => sp.tableNumber === selectedTable) || servicePoints[0];
-  const tableUrl = `${window.location.origin}/?view=customer&table=${selectedTable}`;
+  const tableUrl = `${(import.meta.env.VITE_PUBLIC_URL||window.location.origin).replace(/\/$/,'')}/?view=customer&table=${selectedTable}&business=${encodeURIComponent(business.id)}&menu=${encodeURIComponent(activeMenuId)}`;
 
   useEffect(() => {
     if (isOpen) {
@@ -147,3 +147,4 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({ isOpen, onClose, ini
     </div>
   );
 };
+

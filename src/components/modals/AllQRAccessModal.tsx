@@ -14,7 +14,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   defaultTab = 'tables'
 }) => {
   const { 
-    business, 
+    business,activeMenuId, 
     servicePoints, 
     setCurrentView, 
     setSelectedTableNumber, 
@@ -28,8 +28,8 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   const [waiterQrUrl, setWaiterQrUrl] = useState<string>('');
   const [kitchenQrUrl, setKitchenQrUrl] = useState<string>('');
 
-  const baseUrl = window.location.origin;
-  const currentTableUrl = `${baseUrl}/?view=customer&table=${selectedTable}`;
+  const baseUrl = (import.meta.env.VITE_PUBLIC_URL||window.location.origin).replace(/\/$/,'');
+  const currentTableUrl = `${baseUrl}/?view=customer&table=${selectedTable}&menu=${activeMenuId}&business=${business.id}`;
   const currentWaiterUrl = `${baseUrl}/?view=waiter`;
   const currentKitchenUrl = `${baseUrl}/?view=kitchen`;
 
@@ -186,7 +186,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
             <div className="bg-white border-2 border-dashed border-[#E8DFD3] rounded-3xl p-5 flex flex-col sm:flex-row items-center gap-5">
               <div className="p-2.5 bg-[#FAF7F2] rounded-2xl shadow-sm border border-[#E8DFD3] shrink-0">
                 {tableQrUrl ? (
-                  <img src={tableQrUrl} alt={`QR میز ${selectedTable}`} className="w-44 h-44 object-contain" />
+                  <img src={tableQrUrl} alt={`QR میز ${selectedTable}&menu=${activeMenuId}&business=${business.id}`} className="w-44 h-44 object-contain" />
                 ) : (
                   <div className="w-44 h-44 flex items-center justify-center text-xs text-stone-400">در حال تولید...</div>
                 )}
@@ -218,7 +218,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
                     <span>مشاهده مستقیم اپ مشتری</span>
                   </button>
                   <button
-                    onClick={() => copyToClipboard(currentTableUrl, `منوی میز ${selectedTable}`)}
+                    onClick={() => copyToClipboard(currentTableUrl, `منوی میز ${selectedTable}&menu=${activeMenuId}&business=${business.id}`)}
                     className="px-3 py-2 bg-[#FAF7F2] hover:bg-[#F4EFE6] border border-[#E8DFD3] text-[#1C1917] rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                   >
                     <span className="material-symbols-outlined text-sm">content_copy</span>
@@ -334,3 +334,4 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
     </div>
   );
 };
+

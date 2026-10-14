@@ -446,3 +446,4 @@ export const KitchenKDSApp: React.FC = () => {
     </div>
   );
 };
+

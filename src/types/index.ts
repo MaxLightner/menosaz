@@ -2,6 +2,11 @@ export type Role = 'admin' | 'manager' | 'waiter' | 'kitchen' | 'customer';
 
 export type AppView = 
   | 'website'
+  | 'how'
+  | 'terms'
+  | 'admin'
+  | 'membership'
+  | 'checkout'
   | 'dashboard-desktop'
   | 'dashboard-mobile'
   | 'customer'
@@ -14,6 +19,9 @@ export type DeliveryStatus = 'pending' | 'delivered';
 export type PaymentStatus = 'unpaid' | 'paid_online' | 'paid_pos' | 'paid_cash';
 
 export interface Business {
+  menuPalette?:string;
+  menuPaper?:number;
+  menuBackgroundImage?:string;
   id: string;
   name: string;
   slug: string;
@@ -46,7 +54,11 @@ export interface OptionGroup {
   options: ProductOption[];
 }
 
+export interface MenuDefinition {id:string;name:string;kind:string;published:boolean;appearance?:{menuPalette?:string;menuPaper?:number;menuBackgroundImage?:string};}
+
 export interface Product {
+  customImage?:boolean;
+  menuId?:string;
   id: string;
   businessId: string;
   categoryId: string;
@@ -80,6 +92,7 @@ export interface OrderItemOption {
 }
 
 export interface OrderItem {
+  waiterNotes?:string;
   id: string;
   productId: string;
   productName: string;
@@ -92,6 +105,8 @@ export interface OrderItem {
 }
 
 export interface Order {
+  menuId?:string;
+  restaurantConfirmed?:boolean;
   id: string;
   businessId: string;
   tableNumber: number;
@@ -145,4 +160,5 @@ export interface ServiceCall {
   status: 'pending' | 'resolved';
   createdAt: string;
 }
+
 

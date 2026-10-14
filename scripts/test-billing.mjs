@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {billingRequest,sandboxGateway} from '../supabase/functions/menu-api/billing.ts';
+let p={id:'00000000-0000-4000-8000-000000000001',amount:2000000,status:'pending',plan:'growth',authority:null},activations=0,verifyCalls=0;
+const db={rpc:async(name,args)=>{assert.equal(name,'menu_billing');assert.equal(args.p_uid,'owner');if(args.p_op==='attach')p.authority??=args.p_body.authority;if(args.p_op==='paid'&&p.status!=='paid'){p.status='paid';p.ref_id=args.p_body.refId;activations++;}if(args.p_op==='cancel')p.status='cancelled';return {data:{...p}};}};
+const gateway=async(method,body)=>{assert.equal(body.amount,2000000);if(method==='request'){assert.match(body.callback_url,/^https:\/\/menosaz-menu\.sharp-wren-1486\.chatgpt\.site\/\?view=checkout&payment=/);return {code:100,authority:'S000000000000000000000000000000001'};}verifyCalls++;return {code:100,ref_id:86753};};
+const r=await billingRequest(db,'owner','/billing/create',{plan:'growth',requestId:crypto.randomUUID()},gateway);assert.match(r.url,/^https:\/\/sandbox.zarinpal.com\/pg\/StartPay\/S/);
+await assert.rejects(billingRequest(db,'owner','/billing/verify',{id:p.id,status:'OK',authority:'forged'},gateway));assert.equal(verifyCalls,0);assert.equal(activations,0);
+assert.equal((await billingRequest(db,'owner','/billing/verify',{id:p.id,status:'OK',authority:p.authority},gateway)).paid,true);
+await billingRequest(db,'owner','/billing/verify',{id:p.id,status:'OK',authority:p.authority},gateway);assert.equal(activations,1);assert.equal(verifyCalls,1);
+p={...p,status:'pending'};await billingRequest(db,'owner','/billing/verify',{id:p.id,status:'NOK'},gateway);assert.equal(p.status,'cancelled');assert.equal(activations,1);
+await assert.rejects(billingRequest({rpc:async()=>({error:{}})},'owner','/billing/create',{},gateway));
+const realFetch=globalThis.fetch;let called='';globalThis.fetch=async(url,init)=>{called=url;assert.equal(JSON.parse(init.body).merchant_id.length,36);return {ok:true,json:async()=>({data:{code:100,authority:'S000000000000000000000000000000001'}})};};await sandboxGateway('request',{amount:2000000});assert.equal(called,'https://sandbox.zarinpal.com/pg/v4/payment/request.json');globalThis.fetch=realFetch;
+console.log('PASS: sandbox-only URLs, server amount, forged callback, idempotent activation, cancellation, ownership errors');

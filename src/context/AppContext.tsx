@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import {api,BACKEND} from '../services/backend';
+import type {MenuDefinition} from '../types';
+import {canDeliver,canConfirmKitchen} from '../lib/orderRules';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { 
   Business, 
   Product, 
@@ -42,18 +45,27 @@ interface CartItem {
 }
 
 interface AppContextType {
+  hasAnyProducts:boolean;
+  menus:MenuDefinition[];activeMenuId:string;setActiveMenuId:(id:string)=>void;createMenu:(name:string,kind:string)=>Promise<MenuDefinition>;assignProductMenu:(id:string,menuId:string)=>Promise<void>;
+  submitToKitchen:(id:string)=>Promise<void>;
+  confirmKitchen:(id:string)=>Promise<void>;
+  markDelivered:(id:string)=>Promise<void>;
+  removeOrderItem:(id:string,itemId:string)=>Promise<void>;
+  setItemWaiterNote:(id:string,itemId:string,note:string)=>Promise<void>;
+  setCartNotes:(id:string,note:string)=>void;
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
   business: Business;
   updateBusinessSettings: (partial: Partial<Business>) => Promise<void>;
   products: Product[];
+  updateProductImage:(id:string,dataUrl:string)=>Promise<void>;
   updateProductPrice: (productId: string, newPrice: number) => Promise<void>;
   toggleProductAvailability: (productId: string, isAvailable: boolean, reason?: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'businessId' | 'updatedAt'>) => Promise<string>;
   servicePoints: ServicePoint[];
   toggleTableOccupancy: (tableNumber: number, isOccupied: boolean) => Promise<void>;
   orders: Order[];
-  createOrder: (tableNumber: number, customerName: string, customerNotes: string, items: CartItem[]) => Promise<string>;
+  createOrder: (tableNumber: number, customerName: string, customerNotes: string, items: CartItem[],businessId?:string) => Promise<string>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   updateDeliveryStatus: (orderId: string, deliveryStatus: DeliveryStatus) => Promise<void>;
   updatePaymentStatus: (orderId: string, paymentStatus: PaymentStatus) => Promise<void>;
@@ -88,11 +100,24 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'menuyar_state_v1';
+const LOCAL_PREVIEW=import.meta.env.VITE_LOCAL_PREVIEW==='true';
+const LOCAL_STORAGE_KEY = LOCAL_PREVIEW?'menosaz_local_preview_v2':'menuyar_state_v1';
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentView, setCurrentView] = useState<AppView>('website');
-  const [selectedTableNumber, setSelectedTableNumber] = useState<number>(4);
+  const [menus,setMenus]=useState<MenuDefinition[]>([{id:'main',name:'رستوران',kind:'restaurant',published:true}]);
+  const [activeMenuId,setMenuId]=useState(new URLSearchParams(window.location.search).get('menu')||'main');
+  function setActiveMenuId(id:string){setCart([]);setMenuId(id);}
+  async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',{name:clean,kind});setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
+  async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    const view = new URLSearchParams(window.location.search).get('view') as AppView;
+    return ['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen','test-guide'].includes(view) ? view : 'website';
+  });
+  useEffect(()=>{const onSitePop=()=>{const v=new URLSearchParams(window.location.search).get('view') as AppView;if(['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(v))setCurrentView(v);};window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
+  const [selectedTableNumber, setSelectedTableNumber] = useState<number>(() => {
+    const table = Number(new URLSearchParams(window.location.search).get('table'));
+    return Number.isInteger(table) && table > 0 ? table : 4;
+  });
   const [isNetworkOnline, setIsNetworkOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isSimulatingOffline, setIsSimulatingOffline] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -267,6 +292,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [showToast]);
 
   const toggleSimulateOffline = async () => {
+    if(LOCAL_PREVIEW){setIsSimulatingOffline(!isSimulatingOffline);return;}
     try {
       if (isSimulatingOffline) {
         await enableNetwork(db);
@@ -289,7 +315,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view') as AppView | null;
     const tableParam = params.get('table');
-    if (viewParam) {
+    if (viewParam && ['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen','test-guide'].includes(viewParam)) {
       setCurrentView(viewParam);
     }
     if (tableParam) {
@@ -300,8 +326,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, []);
 
+
+  useEffect(()=>{if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND)return;const receive=(e:StorageEvent)=>{if(!e.newValue)return;try{const data=JSON.parse(e.newValue);if(e.key===LOCAL_STORAGE_KEY+'_orders')setOrders(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_serviceCalls')setServiceCalls(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_products')setProducts(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_business')setBusiness(prev=>JSON.stringify(prev)===e.newValue?prev:data);}catch{}};window.addEventListener('storage',receive);return()=>window.removeEventListener('storage',receive);},[]);
+
+  useEffect(()=>{if(!BACKEND)return;let stopped=false;async function sync(){try{let data;try{if(currentView==='customer')throw Error('Public menu route');data=await api('/workspace');}catch{const b=new URLSearchParams(window.location.search).get('business')||business.id;data=await api('/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId));try{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}catch{}}if(stopped)return;setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsFirebaseConnected(true);}catch{setIsFirebaseConnected(false);}}sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};},[activeMenuId,currentView]);
+  const pendingGuest=useRef<{signature:string;token:string;key:string}|null>(null);
+  async function remoteOrder(id:string,action:string,itemId?:string,note?:string){const o=await api<Order>('/orders/'+id+'/action',{action,itemId,note});setOrders(prev=>prev.map(v=>v.id===id?o:v));}
   // Initialize and attach Firestore Real-Time Sync
   useEffect(() => {
+    if(LOCAL_PREVIEW||BACKEND)return;
     let unsubBusiness: (() => void) | null = null;
     let unsubProducts: (() => void) | null = null;
     let unsubOrders: (() => void) | null = null;
@@ -399,10 +432,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Update business settings
   const updateBusinessSettings = async (partial: Partial<Business>) => {
+    if(BACKEND){if(['menuPalette','menuPaper','menuBackgroundImage'].some(k=>k in partial)){const menu=await api<MenuDefinition>('/menus/'+activeMenuId,{appearance:partial},'PATCH');setMenus(prev=>prev.map(m=>m.id===menu.id?menu:m));}else setBusiness(await api<Business>('/business',partial,'PATCH'));showToast('تنظیمات ذخیره شد');return;}
+
     const updated = { ...business, ...partial, updatedAt: new Date().toISOString() };
     setBusiness(updated);
     try {
-      await updateDoc(doc(db, 'businesses', 'pich-shemroon'), updated);
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'businesses', 'pich-shemroon'), updated);
     } catch {
       // fallback handled by local state
     }
@@ -410,14 +445,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // 1. Manager edits product price (persists to Firestore & real-time everywhere)
+  async function updateProductImage(id:string,dataUrl:string){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl});const p=await api<Product>('/products/'+id,{imageUrl:uploaded.imageUrl,customImage:true},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));showToast('عکس غذا ذخیره شد');}
   const updateProductPrice = async (productId: string, newPrice: number) => {
+    if(BACKEND){const p=await api<Product>('/products/'+productId,{price:newPrice},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));showToast('قیمت ذخیره شد');return;}
     const updatedProducts = products.map(p => 
       p.id === productId ? { ...p, price: newPrice, updatedAt: new Date().toISOString() } : p
     );
     setProducts(updatedProducts);
 
     try {
-      await updateDoc(doc(db, 'products', productId), { 
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'products', productId), { 
         price: newPrice, 
         updatedAt: new Date().toISOString() 
       });
@@ -429,6 +466,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Toggle availability (out of stock / in stock)
   const toggleProductAvailability = async (productId: string, isAvailable: boolean, reason?: string) => {
+    if(BACKEND){const p=await api<Product>('/products/'+productId,{isAvailable,outOfStockReason:reason||''},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));return;}
     const updatedProducts = products.map(p => 
       p.id === productId ? { 
         ...p, 
@@ -440,7 +478,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setProducts(updatedProducts);
 
     try {
-      await updateDoc(doc(db, 'products', productId), { 
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'products', productId), { 
         isAvailable, 
         outOfStockReason: isAvailable ? '' : (reason || 'موجودی به اتمام رسیده است'),
         updatedAt: new Date().toISOString() 
@@ -453,18 +491,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Add new food item
   const addProduct = async (productData: Omit<Product, 'id' | 'businessId' | 'updatedAt'>): Promise<string> => {
+    if(BACKEND){if(productData.imageUrl.startsWith('data:')){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:productData.imageUrl});productData={...productData,imageUrl:uploaded.imageUrl,customImage:true};}const p=await api<Product>('/products',{...productData,menuId:activeMenuId});setProducts(prev=>[p,...prev]);return p.id;}
     const newId = `prod-${Date.now()}`;
     const newProduct: Product = {
       ...productData,
       id: newId,
-      businessId: 'narenj',
+      businessId: business.id,menuId:activeMenuId,
       updatedAt: new Date().toISOString(),
     };
 
     setProducts(prev => [newProduct, ...prev]);
 
     try {
-      await setDoc(doc(db, 'products', newId), newProduct);
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await setDoc(doc(db, 'products', newId), newProduct);
     } catch {
       // local state has it
     }
@@ -474,13 +513,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Toggle table occupancy
   const toggleTableOccupancy = async (tableNumber: number, isOccupied: boolean) => {
+    if(BACKEND){const p=await api<ServicePoint>('/tables/'+tableNumber,{isOccupied},'PATCH');setServicePoints(prev=>prev.map(v=>v.tableNumber===tableNumber?p:v));return;}
     const updatedPoints = servicePoints.map(sp => 
       sp.tableNumber === tableNumber ? { ...sp, isOccupied } : sp
     );
     setServicePoints(updatedPoints);
 
     try {
-      await updateDoc(doc(db, 'servicePoints', `table-${tableNumber}`), { isOccupied });
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'servicePoints', `table-${tableNumber}`), { isOccupied });
     } catch {
       // local state has it
     }
@@ -491,8 +531,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     tableNumber: number, 
     customerName: string, 
     customerNotes: string, 
-    items: CartItem[]
+    items: CartItem[],
+    orderBusinessId:string='pich-shemroon'
   ): Promise<string> => {
+    if(BACKEND&&!orderBusinessId.startsWith('demo-')){const signature=JSON.stringify([activeMenuId,tableNumber,items]);if(pendingGuest.current?.signature!==signature)pendingGuest.current={signature,token:crypto.randomUUID(),key:crypto.randomUUID()};const grant=pendingGuest.current;const o=await api<Order>('/orders',{businessId:business.id,menuId:activeMenuId,tableNumber,customerName,customerNotes,idempotencyKey:grant.key,guestToken:grant.token,items:items.map(i=>({productId:i.product.id,quantity:i.quantity,notes:i.notes,selectedOptions:i.selectedOptions}))});try{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');sessionStorage.setItem('menosaz-guest-grants',JSON.stringify([{id:o.id,businessId:o.businessId,token:grant.token},...grants].slice(0,10)));}catch{}pendingGuest.current=null;setOrders(prev=>[o,...prev]);setCart([]);showToast('سفارش ثبت شد');return o.id;}
     const orderNumNumber = Math.floor(1000 + Math.random() * 9000);
     const orderId = `order-${Date.now()}`;
     const orderNumberStr = `#${orderNumNumber}`;
@@ -514,7 +556,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const newOrder: Order = {
       id: orderId,
-      businessId: 'pich-shemroon',
+      businessId: orderBusinessId,
       tableNumber,
       orderNumber: orderNumberStr,
       customerName: customerName.trim() || `مشتری میز ${tableNumber}`,
@@ -532,14 +574,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Update local state immediately
     setOrders(prev => [newOrder, ...prev]);
     // Mark table as occupied
-    toggleTableOccupancy(tableNumber, true);
+    if(!orderBusinessId.startsWith('demo-'))toggleTableOccupancy(tableNumber, true);
     // Clear cart
     setCart([]);
     // Audio chime for new incoming order
     playChime('order');
 
     try {
-      await setDoc(doc(db, 'orders', orderId), newOrder);
+      if(!LOCAL_PREVIEW&&!BACKEND&&!orderBusinessId.startsWith('demo-')) await setDoc(doc(db, 'orders', orderId), newOrder);
     } catch {
       // local state has it
     }
@@ -550,6 +592,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 3. Waiter approves order (pending_waiter -> cooking) or Kitchen sets ready
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    if(BACKEND){await remoteOrder(orderId,status==='cooking'?'send':status==='ready'?'confirm':status==='delivered'?'deliver':'unsupported');return;}
+    const target=orders.find(o=>o.id===orderId);if(status==='ready'&&(currentView!=='kitchen'||!target||!canConfirmKitchen(target))){showToast('تأیید فقط از نسخه رستوران و پس از پرداخت انجام می‌شود');return;}
     const updatedOrders = orders.map(o => 
       o.id === orderId ? { ...o, status, updatedAt: new Date().toISOString() } : o
     );
@@ -562,7 +606,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      await updateDoc(doc(db, 'orders', orderId), { 
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'orders', orderId), { 
         status, 
         updatedAt: new Date().toISOString() 
       });
@@ -584,6 +628,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     type: 'waiter' | 'bill' | 'napkin' | 'custom', 
     message?: string
   ): Promise<string> => {
+    if(BACKEND){const call=await api<ServiceCall>('/calls',{businessId:business.id,tableNumber,type,message});setServiceCalls(prev=>[call,...prev]);return call.id;}
     const newCall: ServiceCall = {
       id: `call-${Date.now()}`,
       tableNumber,
@@ -597,7 +642,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     playChime('call');
 
     try {
-      await setDoc(doc(db, 'serviceCalls', newCall.id), newCall);
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await setDoc(doc(db, 'serviceCalls', newCall.id), newCall);
     } catch {
       // offline fallback
     }
@@ -607,9 +652,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const resolveServiceCall = async (callId: string) => {
+    if(BACKEND){const c=await api<ServiceCall>('/calls/'+callId,{},'PATCH');setServiceCalls(prev=>prev.map(v=>v.id===callId?c:v));return;}
     setServiceCalls(prev => prev.map(c => c.id === callId ? { ...c, status: 'resolved' } : c));
     try {
-      await updateDoc(doc(db, 'serviceCalls', callId), { status: 'resolved' });
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'serviceCalls', callId), { status: 'resolved' });
     } catch {
       // offline fallback
     }
@@ -618,6 +664,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 4. Staff marks delivery (CRITICAL REQUIREMENT: Delivery and Settlement are INDEPENDENT!)
   const updateDeliveryStatus = async (orderId: string, deliveryStatus: DeliveryStatus) => {
+    if(BACKEND){await remoteOrder(orderId,'deliver');return;}
+    const target=orders.find(o=>o.id===orderId);if(deliveryStatus==='delivered'&&(!target||!canDeliver(target))){showToast('ابتدا پرداخت و تأیید رستوران لازم است');return;}
     const updatedOrders = orders.map(o => {
       if (o.id === orderId) {
         // Also update items delivery status
@@ -636,7 +684,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setOrders(updatedOrders);
 
     try {
-      await updateDoc(doc(db, 'orders', orderId), { 
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'orders', orderId), { 
         deliveryStatus,
         status: deliveryStatus === 'delivered' ? 'delivered' : undefined,
         updatedAt: new Date().toISOString() 
@@ -649,13 +697,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 5. Staff marks payment / settlement
   const updatePaymentStatus = async (orderId: string, paymentStatus: PaymentStatus) => {
+    if(BACKEND){showToast('دریافت وجه را همراه ارسال در نسخه گارسون ثبت کن');return;}
     const updatedOrders = orders.map(o => 
       o.id === orderId ? { ...o, paymentStatus, updatedAt: new Date().toISOString() } : o
     );
     setOrders(updatedOrders);
 
     try {
-      await updateDoc(doc(db, 'orders', orderId), { 
+      if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND) await updateDoc(doc(db, 'orders', orderId), { 
         paymentStatus, 
         updatedAt: new Date().toISOString() 
       });
@@ -764,6 +813,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.removeItem(`${LOCAL_STORAGE_KEY}_supplierListings`);
 
     try {
+      if(LOCAL_PREVIEW){showToast("داده‌های پیش‌نمایش بازنشانی شدند");return;}
       const batch = writeBatch(db);
       // Reset business
       batch.set(doc(db, 'businesses', 'pich-shemroon'), INITIAL_BUSINESS);
@@ -781,15 +831,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('داده‌های آزمایشی به وضعیت اولیه بازگردانده شدند');
   };
 
+  async function patchStaffOrder(id:string,transform:(o:Order)=>Order){const current=orders.find(o=>o.id===id);if(!current)throw Error('Order not found');const next={...transform(current),updatedAt:new Date().toISOString()};if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND)await updateDoc(doc(db,'orders',id),{...next});setOrders(prev=>prev.map(o=>o.id===id?next:o));}
+  async function submitToKitchen(id:string){if(BACKEND){await remoteOrder(id,'send');return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(o.status!=='pending_waiter'||!o.items.length)throw Error('Invalid transition');return {...o,status:'cooking',paymentStatus:o.paymentStatus==='unpaid'?'paid_cash':o.paymentStatus,restaurantConfirmed:false};});showToast('دریافت وجه ثبت و سفارش برای رستوران ارسال شد');}
+  async function confirmKitchen(id:string){if(BACKEND){await remoteOrder(id,'confirm');return;}if(currentView!=='kitchen')throw Error('Kitchen only');await patchStaffOrder(id,o=>{if(!canConfirmKitchen(o))throw Error('Payment or status invalid');return {...o,status:'ready',restaurantConfirmed:true};});playChime('ready');showToast('تأیید رستوران ثبت شد');}
+  async function markDelivered(id:string){if(BACKEND){await remoteOrder(id,'deliver');return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(!canDeliver(o))throw Error('Restaurant approval and payment required');return {...o,status:'delivered',deliveryStatus:'delivered',items:o.items.map(i=>({...i,deliveryStatus:'delivered'}))};});showToast('تحویل به مشتری ثبت شد');}
+  async function removeOrderItem(id:string,itemId:string){if(BACKEND){await remoteOrder(id,'remove',itemId);return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(o.deliveryStatus==='delivered'||o.status==='cancelled')throw Error('Order closed');const items=o.items.filter(i=>i.id!==itemId);if(items.length===o.items.length)throw Error('Item not found');return {...o,items,totalAmount:items.reduce((sum,i)=>sum+i.itemTotal,0),status:items.length?'pending_waiter':'cancelled',restaurantConfirmed:false};});showToast('غذا حذف شد؛ تغییرات نیاز به تأیید و ارسال دارند');}
+  async function setItemWaiterNote(id:string,itemId:string,note:string){if(BACKEND){await remoteOrder(id,'note',itemId,note);return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(o.deliveryStatus==='delivered'||o.status==='cancelled')throw Error('Order closed');return {...o,items:o.items.map(i=>i.id===itemId?{...i,waiterNotes:note.trim().slice(0,500)}:i),status:'pending_waiter',restaurantConfirmed:false};});showToast('توضیح ذخیره شد؛ تغییرات را برای رستوران ارسال کن');}
+  const setCartNotes=(id:string,note:string)=>setCart(prev=>prev.map(c=>c.id===id?{...c,notes:note.slice(0,500)}:c));
+
   return (
     <AppContext.Provider
       value={{
+        submitToKitchen,confirmKitchen,markDelivered,removeOrderItem,setItemWaiterNote,setCartNotes,
         currentView,
         setCurrentView,
-        business,
+        business:{...business,...menus.find(m=>m.id===activeMenuId)?.appearance},
         updateBusinessSettings,
-        products,
-        updateProductPrice,
+        menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
+        hasAnyProducts:products.length>0,
+        products:products.filter(p=>(p.menuId||'main')===activeMenuId),
+        updateProductImage,updateProductPrice,
         toggleProductAvailability,
         addProduct,
         servicePoints,
@@ -835,3 +896,4 @@ export const useApp = () => {
   }
   return context;
 };
+

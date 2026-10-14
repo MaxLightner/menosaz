@@ -1,3 +1,6 @@
+import {readProductImage} from '../../lib/productImage';
+import {SAMPLE_CATEGORIES} from '../../services/menuPresentation';
+import {INITIAL_CATEGORIES} from '../../services/seedData';
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 
@@ -10,22 +13,18 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
   const { addProduct, showToast } = useApp();
 
   const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState('cat-main');
+  const [categoryId, setCategoryId] = useState('cat-kebab');
   const [price, setPrice] = useState<number>(290000);
   const [description, setDescription] = useState('');
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(15);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Curated food images
-  const sampleImages = [
-    { label: 'کباب برگ زعفرانی', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBChB6TSp8WxgMrDBA0h6cOZNxkthhvHBjtK_3QugTZS3_SXYi_DIXoVK1GBCyl3DW5We6rlLMKuclO6Jp7i2gkXO8LTvVkMcXzcYWY2Vi9XUYOAQvm7dIDudsreA-EYGHHE9rAhCY4J1-yLjpRLzqP04ogSRDnIlv0YsQwltdcE9IPOClxVRFobaSq07NK6y_UQeN7GVcwCkhBn7Ohxl3w1FaXmq0QWwk2nEyaFnoOvq7ujuAVXHRfgw' },
-    { label: 'برگر اسمش گودا', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDRVDaqDrjmsukm7pvI6as033ZEBUOjUogx4bntvq5OMqphxXiR833W_32ibOzsfmHKXBOAbdnbMk1NaFhNw1T42Yka09tEXJkmBAibvL_GUDC60UCX-BW8JLOCbZS-HoJkRrJ1ibhNCNnXgqnqf-0xkINpMFSpIvoC78w0Yv0o2XXoHbbX-RYaWOcngDVK47B-rHJt_XHC5XZf8trIpIsUFJX_kX7YBcBeTVPVHpzrs-ZOxUJ5cr2FkQ' },
-    { label: 'پیتزا سیر و استیک', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDH6rhGdmLXvt-cE-9YJUywKU6lU3L0k8Yxeksra8tFOew89Dc19iU1gzE3e9vVWgWswGfWzqDXNHZCzZp4CETSHewDeu8qECMyJsNLdj-Hgl4dH3Ip50fsHbIZ6JchEHEREZtTUoA5qgWYHQ-ZnaUlWYpSGtsYU8pXOdFVAC5iCmH3_QBmHDPgXc5uCUAphlvaQ6nV9nT7Y6rU54kSvavVZZbooQaUo8KSeJJ579rbeGqkVAbKKmpTWA' },
-    { label: 'کیک شکلاتی بلژیکی', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZ2HiAntzY6XEx9kRtnCK4yTk31uzSnAuapcJZg9V69wxdRgkVgNyZJsWvWkV-8Da6-2OPVkqoy207U9XWGT1kIKCZEuHK84356ZC_shu1wEGGdojFAIGbeETXmYKqRy7NJmFuHmz9iHbfOQJzYjM8wCEgAmINnuHgAwfKt7vQmTjPe2z4_M2zbf7TFQX9pQ7QYinPnyB7P8ZHsnurAbW2t9up4ORZXCsLTwylxrjSpa9ldGbCfh0InA' },
-  ];
+  const sampleImages = [{"label": "کباب برگ", "url": "/media/iran-2.webp"}, {"label": "برگر", "url": "/media/food-2.webp"}, {"label": "پیتزا", "url": "/media/food-0.webp"}, {"label": "اسپرسو", "url": "/menu-assets/espresso.webp"}, {"label": "کاپوچینو", "url": "/menu-assets/cappuccino.webp"}, {"label": "آبمیوه", "url": "/menu-assets/orange-juice.webp"}, {"label": "بستنی", "url": "/menu-assets/icecream.webp"}];
 
   const [selectedImage, setSelectedImage] = useState<string>(sampleImages[0].url);
 
+  async function selectFile(file:File){try{setSelectedImage(await readProductImage(file));}catch(e){showToast((e as Error).message);}}
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +64,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="add-dish-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-[#FFFDF9] border border-[#E8DFD3] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-[#FAF0E4] to-[#FFFDF9] p-4 border-b border-[#E8DFD3] flex items-center justify-between">
@@ -74,12 +73,12 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
               <span className="material-symbols-outlined text-xl">restaurant</span>
             </div>
             <div>
-              <h3 className="font-bold text-[#1C1917] text-base">افزودن غذای جدید به منو</h3>
+              <h3 id="add-dish-title" className="font-bold text-[#1C1917] text-base">افزودن غذای جدید به منو</h3>
               <p className="text-xs text-[#7A6458]">ذخیره فوری در پایگاه داده و انتشار برای مشتریان</p>
             </div>
           </div>
           <button 
-            onClick={onClose}
+            aria-label="بستن پنجره" onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-500 hover:bg-stone-200 transition-colors"
           >
             <span className="material-symbols-outlined">close</span>
@@ -108,10 +107,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DFD3] rounded-xl text-sm focus:outline-none focus:border-[#9e2016]"
               >
-                <option value="cat-main">غذای اصلی</option>
-                <option value="cat-appetizer">پیش‌غذا و سالاد</option>
-                <option value="cat-drink">نوشیدنی‌ها</option>
-                <option value="cat-cafe">کافه و دسر</option>
+                {Array.from(new Map([...INITIAL_CATEGORIES.map(c=>[c.id,c.name]),...Object.entries(SAMPLE_CATEGORIES)] as [string,string][])).map(([id,label])=><option key={id} value={id}>{label}</option>)}
               </select>
             </div>
 
@@ -154,7 +150,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
 
           {/* Picture preset picker */}
           <div>
-            <label className="block text-xs font-bold text-[#1C1917] mb-1.5">انتخاب تصویر غذا:</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1.5">انتخاب تصویر غذا:</label><label className="manager-upload">عکس مربع حداکثر ۱ مگابایت<input aria-label="عکس غذای جدید" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>e.target.files?.[0]&&selectFile(e.target.files[0])}/></label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {sampleImages.map((img, i) => (
                 <button
@@ -197,3 +193,4 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
     </div>
   );
 };
+

@@ -418,3 +418,4 @@ export const INITIAL_ORDERS: Order[] = [
 ];
 
 export const INITIAL_SUPPLIER_LISTINGS: SupplierListing[] = [];
+
