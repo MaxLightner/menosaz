@@ -1,7 +1,8 @@
 import {readdir, readFile, writeFile} from 'node:fs/promises';
 import {extname, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
-const root = new URL('../dist/', import.meta.url);
+const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const textExtensions = new Set(['.html', '.css', '.js', '.json', '.webmanifest']);
 const assetRoots = ['media/', 'menu-assets/', 'paper-', 'fonts/', 'box.glb'];
 
