@@ -35,6 +35,7 @@ export interface Business {
 }
 
 export interface Category {
+  menuId?: string;
   id: string;
   name: string;
   icon?: string;
@@ -54,9 +55,10 @@ export interface OptionGroup {
   options: ProductOption[];
 }
 
-export interface MenuDefinition {id:string;name:string;kind:string;published:boolean;appearance?:{menuPalette?:string;menuPaper?:number;menuBackgroundImage?:string};}
+export interface MenuDefinition {id:string;name:string;kind:string;published:boolean;version?:number;appearance?:{menuPalette?:string;menuPaper?:number;menuBackgroundImage?:string};}
 
 export interface Product {
+  version?:number;
   customImage?:boolean;
   menuId?:string;
   id: string;

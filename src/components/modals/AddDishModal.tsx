@@ -1,7 +1,5 @@
 import {readProductImage} from '../../lib/productImage';
-import {SAMPLE_CATEGORIES} from '../../services/menuPresentation';
-import {INITIAL_CATEGORIES} from '../../services/seedData';
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 
 interface AddDishModalProps {
@@ -10,10 +8,11 @@ interface AddDishModalProps {
 }
 
 export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) => {
-  const { addProduct, showToast } = useApp();
+  const { addProduct, showToast,categories } = useApp();
 
   const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState('cat-kebab');
+  const [categoryId, setCategoryId] = useState('');
+  useEffect(()=>{if(!categories.some(c=>c.id===categoryId))setCategoryId(categories[0]?.id||'');},[categories,categoryId]);
   const [price, setPrice] = useState<number>(290000);
   const [description, setDescription] = useState('');
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(15);
@@ -33,6 +32,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
       showToast('لطفا نام غذا را وارد کنید');
       return;
     }
+    if(!categoryId){showToast('ابتدا از بخش دسته‌بندی‌های منو یک دسته اضافه کن');return;}
     if (price <= 0) {
       showToast('لطفا قیمت معتبر وارد کنید');
       return;
@@ -57,7 +57,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
       onClose();
     } catch (err) {
       console.error(err);
-      showToast('خطا در ثبت غذا در پایگاه داده');
+      showToast((err as Error).message||'خطا در ثبت محصول');
     } finally {
       setIsSubmitting(false);
     }
@@ -107,7 +107,8 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DFD3] rounded-xl text-sm focus:outline-none focus:border-[#9e2016]"
               >
-                {Array.from(new Map([...INITIAL_CATEGORIES.map(c=>[c.id,c.name]),...Object.entries(SAMPLE_CATEGORIES)] as [string,string][])).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+                {!categories.length&&<option value="">ابتدا دسته‌ای برای همین منو بساز</option>}
+                {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 

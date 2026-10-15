@@ -1,0 +1,9 @@
+.manager-categories{padding:10px 0;border-top:1px solid #dbe2d5;margin-top:10px;width:100%}
+.manager-categories summary{cursor:pointer;font-weight:700}
+.manager-categories>div{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.manager-categories button{border:1px solid #b9c8b2;border-radius:8px;padding:6px 10px;background:#fff;color:#344a30}
+.manager-categories form{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.manager-categories label{display:grid;gap:5px;flex:1}
+.manager-categories input{min-width:0;border:1px solid #b9c8b2;border-radius:8px;padding:8px}
+.manager-categories [role=alert]{color:#a22b1e;margin-top:8px}
+.manager-categories button:disabled{opacity:.5}

@@ -32,11 +32,14 @@ if(path==='/presence'&&req.method==='POST'){const r=await db.rpc('menu_api_v2',{
 if(path.startsWith('/billing/')){if(!uid)return reply({error:'ابتدا وارد حساب شو'},401);if(req.method!=='POST'||!['/billing/create','/billing/verify'].includes(path))return reply({error:'مسیر معتبر نیست'},404);const allowed=await db.rpc('menu_rate',{p_key:'billing-'+uid,p_max:12});if(allowed.data!==true)return reply({error:'کمی صبر کن و دوباره تلاش کن'},429);return reply(await billingRequest(db,uid,path,body));}
 if(!uid&&!['/health','/public/menu','/public/feed','/orders','/order-status','/calls'].includes(path))return reply({error:'ابتدا وارد حساب شو'},401);
 if(path==='/profile'&&uid){const result=await db.rpc('menu_profile',{p_uid:uid,...(req.method==='POST'?{p_body:body}:{})});if(result.error)return reply({error:'نام و نوع مجموعه را کامل کن'},400);return reply(result.data);}
-if(path==='/product-images'&&req.method==='POST'&&uid){
+if(['/product-images','/background-images'].includes(path)&&req.method==='POST'&&uid){
  const workspace=await db.rpc('menu_api_v2',{p_path:'/workspace',p_method:'GET',p_body:{},p_uid:uid});if(workspace.error||workspace.data.status!==200)return reply({error:'دسترسی مجموعه لازم است'},403);
- let image;try{image=productImageData(body.dataUrl);}catch(error){return reply({error:error.message},400);}
+ let image;try{image=productImageData(body.dataUrl,path==='/product-images');}catch(error){return reply({error:error.message},400);}
  const bid=workspace.data.data.business.id,ext=image.mime==='image/jpeg'?'jpg':image.mime==='image/png'?'png':'webp',filename=bid+'/'+crypto.randomUUID()+'.'+ext;
- const uploaded=await db.storage.from('menu-images').upload(filename,image.bytes,{contentType:image.mime,upsert:false});if(uploaded.error)return reply({error:'ذخیره عکس انجام نشد'},500);return reply({imageUrl:db.storage.from('menu-images').getPublicUrl(filename).data.publicUrl});
+ const uploaded=await db.storage.from('menu-images').upload(filename,image.bytes,{contentType:image.mime,upsert:false});if(uploaded.error)return reply({error:'ذخیره عکس انجام نشد'},500);
+ const assetUrl=db.storage.from('menu-images').getPublicUrl(filename).data.publicUrl;
+ const registered=await db.rpc('catalog_media_register',{bid,asset_id:crypto.randomUUID(),asset_url:assetUrl,storage_path:filename,info:{mime:image.mime,width:image.width,height:image.height,bytes:image.bytes.length,purpose:path==='/product-images'?'product':'background'}});
+ if(registered.error){await db.storage.from('menu-images').remove([filename]);return reply({error:'ثبت رسانه انجام نشد؛ دوباره تلاش کن'},500);}return reply(registered.data);
 }
 const {data,error}=await db.rpc('menu_api_v2',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});if(error)return reply({error:'خطای پایگاه داده؛ دوباره تلاش کن'},500);return reply(data.data,data.status);
 }catch(error){return reply({error:error?.status?error.message:'درخواست معتبر نیست'},error?.status||400);}});

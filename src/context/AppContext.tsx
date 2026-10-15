@@ -1,5 +1,6 @@
 import {api,BACKEND} from '../services/backend';
-import type {MenuDefinition} from '../types';
+import type {MenuDefinition,Category} from '../types';
+import {commandBody,type PendingCommand} from '../services/catalog';
 import {canDeliver,canConfirmKitchen} from '../lib/orderRules';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { 
@@ -45,6 +46,7 @@ interface CartItem {
 }
 
 interface AppContextType {
+  categories:Category[];
   hasAnyProducts:boolean;
   menus:MenuDefinition[];activeMenuId:string;setActiveMenuId:(id:string)=>void;createMenu:(name:string,kind:string)=>Promise<MenuDefinition>;assignProductMenu:(id:string,menuId:string)=>Promise<void>;
   submitToKitchen:(id:string)=>Promise<void>;
@@ -104,10 +106,12 @@ const LOCAL_PREVIEW=import.meta.env.VITE_LOCAL_PREVIEW==='true';
 const LOCAL_STORAGE_KEY = LOCAL_PREVIEW?'menosaz_local_preview_v2':'menuyar_state_v1';
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [categories,setCategories]=useState<Category[]>([]);
+  const pendingMenu=useRef<PendingCommand>(null);
   const [menus,setMenus]=useState<MenuDefinition[]>([{id:'main',name:'رستوران',kind:'restaurant',published:true}]);
   const [activeMenuId,setMenuId]=useState(new URLSearchParams(window.location.search).get('menu')||'main');
   function setActiveMenuId(id:string){setCart([]);setMenuId(id);}
-  async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',{name:clean,kind});setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
+  async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',commandBody({name:clean,kind},pendingMenu));pendingMenu.current=null;setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
   async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
   const [currentView, setCurrentView] = useState<AppView>(() => {
     const view = new URLSearchParams(window.location.search).get('view') as AppView;
@@ -329,7 +333,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(()=>{if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND)return;const receive=(e:StorageEvent)=>{if(!e.newValue)return;try{const data=JSON.parse(e.newValue);if(e.key===LOCAL_STORAGE_KEY+'_orders')setOrders(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_serviceCalls')setServiceCalls(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_products')setProducts(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_business')setBusiness(prev=>JSON.stringify(prev)===e.newValue?prev:data);}catch{}};window.addEventListener('storage',receive);return()=>window.removeEventListener('storage',receive);},[]);
 
-  useEffect(()=>{if(!BACKEND)return;let stopped=false;async function sync(){try{let data;try{if(currentView==='customer')throw Error('Public menu route');data=await api('/workspace');}catch{const b=new URLSearchParams(window.location.search).get('business')||business.id;data=await api('/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId));try{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}catch{}}if(stopped)return;setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsFirebaseConnected(true);}catch{setIsFirebaseConnected(false);}}sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};},[activeMenuId,currentView]);
+  useEffect(()=>{
+    if(!BACKEND)return;let stopped=false,revision=0;
+    async function sync(){const request=++revision;try{
+      const publicView=['customer','website','how','terms'].includes(currentView);
+      const b=new URLSearchParams(window.location.search).get('business')||business.id;
+      const data=await api(publicView?'/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId):'/workspace');
+      if(publicView&&currentView==='customer'){
+        try{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}catch{}
+      }
+      if(stopped||request!==revision)return;
+      setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setCategories(data.categories||[]);
+      setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsFirebaseConnected(true);
+      if(!publicView&&data.menus?.length&&!data.menus.some((m:MenuDefinition)=>m.id===activeMenuId))setMenuId(data.menus[0].id);
+    }catch{if(!stopped&&request===revision)setIsFirebaseConnected(false);}}
+    sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);
+    return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};
+  },[activeMenuId,currentView]);
   const pendingGuest=useRef<{signature:string;token:string;key:string}|null>(null);
   async function remoteOrder(id:string,action:string,itemId?:string,note?:string){const o=await api<Order>('/orders/'+id+'/action',{action,itemId,note});setOrders(prev=>prev.map(v=>v.id===id?o:v));}
   // Initialize and attach Firestore Real-Time Sync
@@ -842,6 +862,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider
       value={{
+        categories:categories.filter(c=>!c.menuId||c.menuId===activeMenuId),
         submitToKitchen,confirmKitchen,markDelivered,removeOrderItem,setItemWaiterNote,setCartNotes,
         currentView,
         setCurrentView,
