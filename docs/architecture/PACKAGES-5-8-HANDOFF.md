@@ -10,7 +10,7 @@
 
 ## Release evidence
 
-- 110 database checks: 27 catalog, 34 access, 14 point/schedule, 35 session/order/ledger/privacy checks.
+- 111 database checks: 27 catalog, 34 access, 14 point/schedule, 36 session/order/ledger/privacy checks.
 - 14 notification-transition checks, including ready+delivery occurring between polls and suppression of repeated alerts.
 - TypeScript and production build pass. CI now runs all of these on main before Pages deployment.
 - Live-data restore rehearsal: four accounts, 37 products, 31 points, one historical order; amounts and item snapshots match. Protected backups remain encrypted outside the repository. The stdin readers explicitly decode UTF-8 across chunks, and function fingerprint comparisons normalize CRLF, preserving Persian text.
@@ -19,3 +19,5 @@
 ## Limits and next packages
 
 The active deployed menu/order flows use Supabase. Remaining local-preview/Firebase/SQLite source removal belongs to package 10; billing/content normalization belongs to package 9. Paid revisions/refunds, guaranteed closed-app push and physical-phone audio/QR testing remain separate work and must not be described as completed here.
+
+Final guard migration 007 is active: an open session cannot be cleared by toggling its occupied flag. QR opening starts/resumes the guest session; ordinary website previews do not. Notification history survives menu-tab changes and is cleared with private workspace state on logout/ban.

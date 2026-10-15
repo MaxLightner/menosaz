@@ -20,7 +20,7 @@ const guarded=tables.filter(t=>t!=='menu_presence'),manifest=[];
 for(const t of guarded)manifest.push({table:t,...(await db.query(`select count(*)::int count,md5(coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text),'[]')::text) hash from ${t} x`)).rows[0]});
 if(process.env.WRITE_PRIVATE_MANIFEST==='yes')await writeFile(new URL('review/domains-manifest.json',root),JSON.stringify({tables:manifest.map(t=>({...t,records:backup.tables[t.table]})),functions:backup.functions.map(f=>({name:f.name,hash:createHash('md5').update(f.ddl.split(String.fromCharCode(13)).join('')).digest('hex')}))}));
 const oldOrders=backup.tables.menu_workspaces.flatMap(w=>(w.payload.orders||[]).map(o=>({bid:w.id,...o}))),oldCalls=backup.tables.menu_workspaces.reduce((n,w)=>n+(w.payload.serviceCalls||[]).length,0),oldPoints=backup.tables.menu_workspaces.reduce((n,w)=>n+(w.payload.servicePoints||[]).length,0);
-for(const n of ['202610150005_points_schedule.sql','202610150006_orders.sql'])await db.exec(await readFile(new URL('supabase/migrations/'+n,root),'utf8'));
+for(const n of ['202610150005_points_schedule.sql','202610150006_orders.sql','202610150007_flow_guards.sql'])await db.exec(await readFile(new URL('supabase/migrations/'+n,root),'utf8'));
 for(const o of oldOrders){
  const value=(await db.query('select order_dto($1,$2) r',[o.bid,o.id])).rows[0].r;
  assert.equal(value.totalAmount,o.totalAmount);assert.equal(value.status,o.status);assert.equal(value.paymentStatus,o.paymentStatus);assert.equal(value.customerNotes,o.customerNotes);assert.equal(value.items.length,o.items.length);

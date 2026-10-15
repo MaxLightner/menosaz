@@ -132,6 +132,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
   const [menuMessage,setMenuMessage]=useState(''),[guestSessionClosed,setGuestSessionClosed]=useState(false);
   const workspaceGeneration=useRef(0);
+  const alertSnapshots=useRef(new Map<string,AlertSnapshot>());
   const commandCache=useRef(new Map<string,{signature:string;key:string}>());
 
   // Core Data States
@@ -351,7 +352,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(()=>{if(BACKEND||!LOCAL_PREVIEW)return;const receive=(e:StorageEvent)=>{if(!e.newValue)return;try{const data=JSON.parse(e.newValue);if(e.key===LOCAL_STORAGE_KEY+'_orders')setOrders(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_serviceCalls')setServiceCalls(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_products')setProducts(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_business')setBusiness(prev=>JSON.stringify(prev)===e.newValue?prev:data);}catch{}};window.addEventListener('storage',receive);return()=>window.removeEventListener('storage',receive);},[]);
 
   useEffect(()=>{
-    if(!BACKEND)return;let stopped=false,revision=0,fetching=false;let previous:AlertSnapshot|null=null;
+    if(!BACKEND)return;let stopped=false,revision=0,fetching=false;
     async function sync(){if(fetching)return;fetching=true;const request=++revision,generation=workspaceGeneration.current;try{
       const publicView=['customer','website','how','terms'].includes(currentView);
       const b=new URLSearchParams(window.location.search).get('business')||business.id;
@@ -361,13 +362,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if(data.activeMenuId&&data.activeMenuId!==activeMenuId)setMenuId(data.activeMenuId);
       if(data.servicePoint?.tableNumber&&data.servicePoint.tableNumber!==selectedTableNumber)setSelectedTableNumber(data.servicePoint.tableNumber);
       if(publicView&&currentView==='customer'){
-        const guest=data.servicePoint?savedGuestSession(data.business.id,data.servicePoint.id):null;
+        let guest=data.servicePoint?savedGuestSession(data.business.id,data.servicePoint.id):null;
+        const scanned=params.has('q')||(params.get('view')==='customer'&&params.has('business')&&params.has('table'));
+        if(scanned&&data.servicePoint&&!guest?.sessionId){try{guest=await ensureGuestSession(data.business.id,data.servicePoint.id,data.servicePoint.tableNumber);}catch(error){if((error as any).code==='SESSION_CLOSED')data.closed=true;else throw error;}}
         if(guest?.sessionId){try{const status=await api('/sessions/status',guest);data.orders=status.orders;data.notices=status.notices;data.closed=status.status==='closed';}catch(error){if((error as any).code==='SESSION_INVALID')data.closed=true;else throw error;}}else{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}
       }
       if(stopped||request!==revision||generation!==workspaceGeneration.current)return;
       setMenuMessage(data.message||'');setGuestSessionClosed(data.closed===true);
-      for(const alert of orderAlerts(currentView,previous,data))incomingNotice(alert.id,alert.message);
-      previous={orders:data.orders,serviceCalls:data.serviceCalls,servicePoints:data.servicePoints,notices:data.notices};
+      const alertScope=currentView+':'+data.business.id+':'+(data.servicePoint?.id||'');
+      for(const alert of orderAlerts(currentView,alertSnapshots.current.get(alertScope)||null,data))incomingNotice(alert.id,alert.message);
+      alertSnapshots.current.set(alertScope,{orders:data.orders,serviceCalls:data.serviceCalls,servicePoints:data.servicePoints,notices:data.notices});
       setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setCategories(data.categories||[]);
       setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsFirebaseConnected(true);
       if(!publicView&&data.menus?.length&&!data.menus.some((m:MenuDefinition)=>m.id===activeMenuId))setMenuId(data.menus[0].id);
@@ -375,7 +379,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);
     return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};
   },[activeMenuId,currentView,selectedTableNumber]);
-  useEffect(()=>{if(!BACKEND)return;const clear=()=>{workspaceGeneration.current++;setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);setCart([]);setIsFirebaseConnected(false);for(const key of ['orders','products','business','servicePoints','serviceCalls'])localStorage.removeItem(LOCAL_STORAGE_KEY+'_'+key);};window.addEventListener('workspace-clear',clear);return()=>window.removeEventListener('workspace-clear',clear);},[]);
+  useEffect(()=>{if(!BACKEND)return;const clear=()=>{workspaceGeneration.current++;alertSnapshots.current.clear();setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);setCart([]);setIsFirebaseConnected(false);for(const key of ['orders','products','business','servicePoints','serviceCalls'])localStorage.removeItem(LOCAL_STORAGE_KEY+'_'+key);};window.addEventListener('workspace-clear',clear);return()=>window.removeEventListener('workspace-clear',clear);},[]);
   const pendingGuest=useRef<{signature:string;token:string;key:string}|null>(null);
   async function remoteOrder(id:string,action:string,itemId?:string,note?:string){const current=orders.find(o=>o.id===id);if(!current?.version)throw Error('سفارش را دوباره بارگذاری کن');const body={action,itemId,note,expectedVersion:current.version},signature=JSON.stringify(body);let pending=commandCache.current.get(id);if(pending?.signature!==signature){pending={signature,key:crypto.randomUUID()};commandCache.current.set(id,pending);}const o=await api<Order>('/orders/'+id+'/action',{...body,idempotencyKey:pending.key});commandCache.current.delete(id);setOrders(prev=>prev.map(v=>v.id===id?o:v));}
   // Initialize and attach Firestore Real-Time Sync
@@ -559,7 +563,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Toggle table occupancy
   const toggleTableOccupancy = async (tableNumber: number, isOccupied: boolean) => {
-    if(BACKEND){const p=await api<ServicePoint>('/tables/'+tableNumber,{isOccupied},'PATCH');setServicePoints(prev=>prev.map(v=>v.tableNumber===tableNumber?p:v));return;}
+    if(BACKEND){try{const p=await api<ServicePoint>('/tables/'+tableNumber,{isOccupied},'PATCH');setServicePoints(prev=>prev.map(v=>v.tableNumber===tableNumber?p:v));}catch(e){showToast((e as Error).message);}return;}
     const updatedPoints = servicePoints.map(sp => 
       sp.tableNumber === tableNumber ? { ...sp, isOccupied } : sp
     );

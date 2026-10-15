@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
 export async function runOrderTests(db,users,oldOrder,legacyToken){
  await db.exec(await readFile(new URL('../supabase/migrations/202610150006_orders.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/202610150007_flow_guards.sql',import.meta.url),'utf8'));
  if(process.env.DEBUG_ORDER_TEST==='yes'){const ddl=(await db.query("select pg_get_functiondef('order_api(text,text,jsonb,uuid)'::regprocedure) ddl")).rows[0].ddl;await db.exec(ddl.replace("else 'اطلاعات سفارش معتبر نیست'",'else sqlerrm'));}
  const call=async(path,method='GET',body={},uid=users[0])=>(await db.query('select menu_api_v2($1,$2,$3,$4) r',[path,method,body,uid])).rows[0].r;
  const ok=async(...args)=>{const r=await call(...args);assert.equal(r.status,200,JSON.stringify(r));return r.data;};
@@ -10,6 +11,7 @@ export async function runOrderTests(db,users,oldOrder,legacyToken){
  assert.equal(await n("select count(*)::int n from menu_workspaces where payload ? 'orders' or payload ? 'serviceCalls' or payload ? 'servicePoints'"),0);check();
  const p=(await ok('/workspace')).servicePoints[0],token=crypto.randomUUID(),secondToken=crypto.randomUUID();
  const session=await ok('/sessions/open','POST',{q:p.qrToken,guestToken:token},null);check();
+ assert.equal((await call('/tables/1','PATCH',{isOccupied:false})).status,400);check();
  assert.equal((await ok('/sessions/open','POST',{q:p.qrToken,guestToken:token},null)).guestId,session.guestId);check();
  const guest2=await ok('/sessions/open','POST',{q:p.qrToken,guestToken:secondToken},null);assert.equal(guest2.sessionId,session.sessionId);assert.notEqual(guest2.guestId,session.guestId);check();
  const body={businessId:session.businessId,sessionId:session.sessionId,guestToken:token,idempotencyKey:crypto.randomUUID(),customerName:'مهمان',customerNotes:'سس جدا',items:[{productId:'p1',quantity:2,selectedOptions:[{groupTitle:'اندازه',optionName:'بزرگ',extraPrice:1}]}]};
