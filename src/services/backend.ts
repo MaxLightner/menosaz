@@ -1,6 +1,6 @@
 import {CLOUD_API,CLOUD_PUBLIC_KEY} from './cloudConfig';
-export const BACKEND=import.meta.env.PROD||import.meta.env.VITE_BACKEND==='true';
-const base=import.meta.env.VITE_API_BASE||(import.meta.env.PROD?CLOUD_API:'/api'),cloud=base.includes('/functions/v1/menu-api'),publicKey=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||CLOUD_PUBLIC_KEY;
+export const BACKEND=true;
+const base=import.meta.env.VITE_API_BASE||CLOUD_API,cloud=base.includes('/functions/v1/menu-api'),publicKey=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||CLOUD_PUBLIC_KEY;
 export class ApiError extends Error{constructor(message:string,public status:number,public retryAfter?:number,public code?:string){super(message);}}
 let refreshing:Promise<any>|null=null;
 function stored(){try{return JSON.parse(sessionStorage.getItem('menosaz-cloud-session')||localStorage.getItem('menosaz-cloud-session')||'null');}catch{return null;}}

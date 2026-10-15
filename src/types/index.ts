@@ -11,8 +11,7 @@ export type AppView =
   | 'dashboard-mobile'
   | 'customer'
   | 'waiter'
-  | 'kitchen'
-  | 'test-guide';
+  | 'kitchen';
 
 export type OrderStatus = 'pending_waiter' | 'cooking' | 'ready' | 'delivered' | 'cancelled';
 export type DeliveryStatus = 'pending' | 'delivered';
@@ -169,5 +168,4 @@ export interface ServiceCall {
   status: 'pending' | 'resolved';
   createdAt: string;
 }
-
 

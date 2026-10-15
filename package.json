@@ -7,21 +7,17 @@
     "dev": "vite --host=127.0.0.1 --port=4180",
     "build": "vite build",
     "preview": "vite preview --host=127.0.0.1 --port=4180",
-    "clean": "rm -rf dist server.js",
+    "clean": "node --input-type=module -e \"import {rm} from 'node:fs/promises'; await rm('dist', {recursive:true,force:true});\"",
     "lint": "tsc --noEmit",
     "test:catalog": "node scripts/test-catalog.mjs",
     "test:access": "node scripts/test-catalog.mjs --access",
-    "server": "tsx server/index.ts",
-    "test:domains": "node scripts/test-catalog.mjs --orders",
-    "test:notifications": "tsx scripts/test-notifications.ts"
+    "test:domains": "node scripts/test-catalog.mjs --platform",
+    "test:notifications": "tsx scripts/test-notifications.ts",
+    "test:billing": "node scripts/test-billing.mjs"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
-    "firebase": "^13.0.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "qrcode": "^1.5.4",
@@ -31,7 +27,6 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",
-    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",

@@ -12,19 +12,17 @@ import {OrderDialog} from './components/common/OrderDialog';
 import {PresentationProvider,usePresentation} from './context/PresentationContext';
 import React,{useState,useEffect} from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { EnvironmentSwitchBar } from './components/common/EnvironmentSwitchBar';
 import {PublicWebsite as WebsiteView} from './components/website/PublicWebsite';
 import { DesktopDashboard } from './components/dashboard/DesktopDashboard';
 import { MobileDashboard } from './components/dashboard/MobileDashboard';
 import { RestoredCustomerApp as CustomerApp } from './components/customer/RestoredCustomerApp';
 import { RestoredWaiterApp as WaiterApp } from './components/waiter/RestoredWaiterApp';
 import { RestoredKitchenApp as KitchenKDSApp } from './components/kitchen/RestoredKitchenApp';
-import { TestGuideView } from './components/guide/TestGuideView';
 import {MenuSetupWizard} from './components/dashboard/MenuSetupWizard';
 import {WebsiteContentAdmin} from './components/dashboard/WebsiteContentAdmin';
 
 const AppContent: React.FC = () => {
-  const { currentView, setCurrentView, toastMessage,showToast,servicePoints,hasAnyProducts,isFirebaseConnected } = useApp();
+  const { currentView, setCurrentView, toastMessage,showToast,servicePoints,hasAnyProducts,isServerConnected } = useApp();
   const {account,logout,openSample,selectBusiness}=usePresentation();
   const [inboxOpen,setInboxOpen]=useState(false),[teamOpen,setTeamOpen]=useState(false),[sessionsOpen,setSessionsOpen]=useState(false),[profileDeferred,setProfileDeferred]=useState(false);
   useEffect(()=>{const resume=()=>setProfileDeferred(false);window.addEventListener('profile-resume',resume);return()=>window.removeEventListener('profile-resume',resume);},[]);
@@ -42,7 +40,6 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col font-sans relative">
       {/* Test Environment & Role Switcher Bar */}
-      {restored ? currentView!=='customer'&&import.meta.env.VITE_LOCAL_PREVIEW==='true'&&<nav className="restored-preview-nav" aria-label="نسخه‌های پیش‌نمایش">{(['customer','waiter','kitchen'] as const).map((view,i)=><button key={view} className={currentView===view?'active':''} onClick={()=>view==='customer'?openSample(null):setCurrentView(view)}>{['مشتری','گارسون','رستوران'][i]}</button>)}<button onClick={()=>setCurrentView('website')}>سایت</button>{account&&<button onClick={()=>logout()}>خروج از حساب</button>}</nav> : !['website','how','terms','membership','checkout','admin'].includes(currentView)&&!manager&&<EnvironmentSwitchBar />}
 
       {restored&&currentView!=='customer'&&account&&<nav className="manager-utility" aria-label="حساب کارکنان"><NotificationControl/><span>{account.businessRole==='waiter'?'گارسون':account.businessRole==='kitchen'?'آشپزخانه':'حساب مجموعه'}</span>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}<button onClick={()=>logout()}>خروج از حساب</button></nav>}
       {/* Main Viewport */}
@@ -55,9 +52,8 @@ const AppContent: React.FC = () => {
         {currentView === 'dashboard-desktop' && (account&&canManage?(mobileManager?<MobileDashboard />:<DesktopDashboard />):<WebsiteView />)}
         {currentView === 'dashboard-mobile' && (account&&canManage?(<MobileDashboard />):<WebsiteView />)}
         {currentView === 'customer' && <CustomerApp />}
-        {currentView === 'waiter' && (account||import.meta.env.VITE_LOCAL_PREVIEW==='true'?<WaiterApp />:<WebsiteView />)}
-        {currentView === 'kitchen' && (account||import.meta.env.VITE_LOCAL_PREVIEW==='true'?<KitchenKDSApp />:<WebsiteView />)}
-        {currentView === 'test-guide' && <TestGuideView />}
+        {currentView === 'waiter' && (account?<WaiterApp />:<WebsiteView />)}
+        {currentView === 'kitchen' && (account?<KitchenKDSApp />:<WebsiteView />)}
       </div>
 
       {inboxOpen&&account&&<OrderDialog title="پیام‌های پشتیبانی" onClose={()=>setInboxOpen(false)}><ManagerInbox/></OrderDialog>}
@@ -66,7 +62,7 @@ const AppContent: React.FC = () => {
       {sessionsOpen&&canManage&&<OrderDialog title="نشست‌ها و زمان حضور" onClose={()=>setSessionsOpen(false)}><SessionReport/></OrderDialog>}
       {teamOpen&&account?.businessRole==='owner'&&<OrderDialog title="دسترسی کارکنان" onClose={()=>setTeamOpen(false)}><TeamAccess key={account.businessId}/></OrderDialog>}
       {appearanceOpen&&account&&<OrderDialog title="ظاهر منوی مشتری" onClose={()=>setAppearanceOpen(false)}><MenuAppearance onPreview={()=>setAppearanceOpen(false)} /></OrderDialog>}
-      {manager&&account&&canManage&&!account.needsProfile&&isFirebaseConnected&&!hasAnyProducts&&<MenuSetupWizard/>}
+      {manager&&account&&canManage&&!account.needsProfile&&isServerConnected&&!hasAnyProducts&&<MenuSetupWizard/>}
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#1C1917]/95 text-white px-4 py-3 rounded-2xl shadow-2xl border border-amber-600/60 backdrop-blur-md flex items-center gap-2.5 text-base font-bold">

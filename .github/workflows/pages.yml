@@ -35,6 +35,7 @@ jobs:
           pnpm run lint
           pnpm run test:domains
           pnpm run test:notifications
+          pnpm run test:billing
       - name: Build public site
         env:
           VITE_PUBLIC_URL: https://maxlightner.github.io/menosaz

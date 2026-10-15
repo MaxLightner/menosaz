@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+export async function runPlatformTests(db,users){
+ let checks=0;const check=()=>checks++;
+ const call=async(path,method='GET',body={},uid=users[0])=>(await db.query('select menu_api_v2($1,$2,$3,$4) r',[path,method,body,uid])).rows[0].r;
+ const ok=async(...args)=>{const r=await call(...args);assert.equal(r.status,200,JSON.stringify(r));return r.data;};
+ const bill=async(op,body={},uid=users[0])=>(await db.query('select menu_billing($1,$2,$3) r',[op,uid,body])).rows[0].r;
+ const old=(await db.query("insert into menu_payments(user_id,business_id,plan,amount,request_id,status,authority,ref_id) values($1,'pich-shemroon','growth',2000000,$2,'paid','S98765432101234567890','original-ref') returning id",[users[0],crypto.randomUUID()])).rows[0].id;
+ const before=(await db.query('select count(*)::int n,sum(total_toman)::text total from orders')).rows[0];
+ for(const name of ['202610150008_platform.sql','202610150009_runtime_cleanup.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')));
+ const legacy=(await db.query('select amount_toman,gateway_amount_rial,ref_id,status from platform_payments where id=$1',[old])).rows[0];assert.deepEqual(legacy,{amount_toman:200000,gateway_amount_rial:2000000,ref_id:'original-ref',status:'paid'});check();
+ assert.deepEqual((await db.query('select count(*)::int n,sum(total_toman)::text total from orders')).rows[0],before);check();
+ assert.equal((await ok('/health','GET',{},null)).runtimeVersion,2);check();
+ assert.equal((await ok('/health','GET',{},null)).platformVersion,1);check();
+ assert.equal((await ok('/workspace')).business.id,'pich-shemroon');check();
+ assert.equal((await call('/workspace','GET',{},null)).status,401);check();
+ for(const table of ['menu_accounts','menu_workspaces','menu_payments','menu_subscriptions','menu_messages','menu_presence']){assert.equal((await db.query('select to_regclass($1) r',[table])).rows[0].r,null);check();}
+ assert.equal((await db.query("select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.prosrc like '%menu_workspaces%' or p.prosrc like '%menu_accounts%')")).rows[0].n,0);check();
+ assert.equal((await db.query("select has_table_privilege('service_role','migration_workspace_archive','select') r")).rows[0].r,false);check();
+ const sub=await ok('/subscription');assert.equal(sub.plan,'growth');assert.equal(sub.productLimit,null);check();
+ const key=crypto.randomUUID(),payment=await bill('create',{plan:'special',requestId:key});assert.equal(payment.amount,5000000);assert.equal(payment.amount_toman,500000);check();
+ assert.equal((await bill('create',{plan:'special',requestId:key})).id,payment.id);check();
+ await assert.rejects(bill('create',{plan:'growth',requestId:key}),/CONFLICT/);check();
+ await assert.rejects(bill('get',{id:payment.id},users[1]));check();
+ await bill('attach',{id:payment.id,authority:'S12345678901234567890'});
+ await assert.rejects(bill('paid',{id:payment.id,authority:'Sforged123456',refId:'fake'}));check();
+ await bill('paid',{id:payment.id,authority:'S12345678901234567890',refId:'verified-test'});
+ const expiry=(await ok('/subscription')).expiresAt;
+ await bill('paid',{id:payment.id,authority:'S12345678901234567890',refId:'verified-test'});assert.equal((await ok('/subscription')).expiresAt,expiry);check();
+ assert.equal((await db.query("select count(*)::int n from platform_payment_events where payment_id=$1 and action='verified'",[payment.id])).rows[0].n,1);check();
+ await assert.rejects(db.query("update platform_payment_events set action='bad' where payment_id=$1",[payment.id]));check();
+ await assert.rejects(bill('create',{plan:'growth',requestId:crypto.randomUUID()}));check();
+ const cancel=await bill('create',{plan:'special',requestId:crypto.randomUUID()});await bill('cancel',{id:cancel.id});assert.equal((await bill('get',{id:cancel.id})).status,'cancelled');check();
+ const publicContent=await ok('/public/content','GET',{},null);assert.equal(publicContent.version,1);check();
+ assert.equal((await call('/admin/content','PATCH',{content:{},expectedVersion:1})).status,403);check();
+ const admin=(await db.query('select user_id from platform_roles limit 1')).rows[0].user_id;
+ const content={heroDish:'/media/iran-0.webp',heroDrink:'/menu-assets/orange-juice.webp',heroCoffee:'/menu-assets/cappuccino.webp',templates:[]};
+ assert.equal((await ok('/admin/content','PATCH',{content,expectedVersion:1},admin)).version,2);check();
+ assert.equal((await call('/admin/content','PATCH',{content,expectedVersion:1},admin)).status,409);check();
+ assert.equal((await call('/admin/content','PATCH',{content:{...content,heroDish:'javascript:bad'},expectedVersion:2},admin)).status,400);check();
+ assert.equal((await call('/business','PATCH',{websiteContent:content})).status,400);check();
+ await ok('/admin/messages','POST',{business:'pich-shemroon',title:'عنوان',body:'پیام'},admin);
+ const messages=await ok('/messages');assert.ok(messages.length);check();
+ const id=messages[0].id;await ok('/messages/read','POST',{id});assert.ok((await ok('/messages')).find(x=>x.id===id).read_at);check();
+ assert.ok(!(await ok('/messages','GET',{},users[1])).some(x=>x.id===id));check();
+ assert.ok((await ok('/admin/overview','GET',{},admin)).venues.length);check();
+ await ok('/presence','POST',{visitor:crypto.randomUUID()},null);check();
+ const uid='00000000-0000-4000-a000-000000000099';await db.query("insert into auth.users values($1,'989110000099',null,now())",[uid]);
+ const reg=await ok('/register','POST',{businessName:'مجموعه جدید',acceptTerms:true},uid);assert.ok(reg.account.businessId);check();
+ const workspace=await ok('/workspace','GET',{},uid);assert.equal(workspace.products.length,0);assert.equal(workspace.servicePoints.length,5);assert.equal(workspace.menus.length,1);check();
+ assert.equal((await ok('/subscription','GET',{},uid)).productLimit,20);check();
+ const qr=new URL(workspace.servicePoints[0].qrCodeUrl).searchParams.get('q');assert.equal((await ok('/public/resolve','GET',{q:qr},null)).business.id,reg.account.businessId);check();
+ for(const table of ['platform_content','platform_payments','message_receipts','presence']){assert.equal((await db.query('select has_table_privilege(\'anon\',$1,\'select\') r',[table])).rows[0].r,false);check();}
+ console.log(`PASS: ${checks} platform migration/payment/content/receipt/runtime checks`);
+}

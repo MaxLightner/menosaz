@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {billingRequest,sandboxGateway} from '../supabase/functions/menu-api/billing.ts';
 let p={id:'00000000-0000-4000-8000-000000000001',amount:2000000,status:'pending',plan:'growth',authority:null},activations=0,verifyCalls=0;
 const db={rpc:async(name,args)=>{assert.equal(name,'menu_billing');assert.equal(args.p_uid,'owner');if(args.p_op==='attach')p.authority??=args.p_body.authority;if(args.p_op==='paid'&&p.status!=='paid'){p.status='paid';p.ref_id=args.p_body.refId;activations++;}if(args.p_op==='cancel')p.status='cancelled';return {data:{...p}};}};
-const gateway=async(method,body)=>{assert.equal(body.amount,2000000);if(method==='request'){assert.match(body.callback_url,/^https:\/\/menosaz-menu\.sharp-wren-1486\.chatgpt\.site\/\?view=checkout&payment=/);return {code:100,authority:'S000000000000000000000000000000001'};}verifyCalls++;return {code:100,ref_id:86753};};
+const gateway=async(method,body)=>{assert.equal(body.amount,2000000);if(method==='request'){assert.match(body.callback_url,/^https:\/\/maxlightner\.github\.io\/menosaz\/\?view=checkout&payment=/);return {code:100,authority:'S000000000000000000000000000000001'};}verifyCalls++;return {code:100,ref_id:86753};};
 const r=await billingRequest(db,'owner','/billing/create',{plan:'growth',requestId:crypto.randomUUID()},gateway);assert.match(r.url,/^https:\/\/sandbox.zarinpal.com\/pg\/StartPay\/S/);
 await assert.rejects(billingRequest(db,'owner','/billing/verify',{id:p.id,status:'OK',authority:'forged'},gateway));assert.equal(verifyCalls,0);assert.equal(activations,0);
 assert.equal((await billingRequest(db,'owner','/billing/verify',{id:p.id,status:'OK',authority:p.authority},gateway)).paid,true);

@@ -1,0 +1,10 @@
+import {readFile,writeFile} from 'node:fs/promises';
+const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8'),literal=s=>"'"+s.replaceAll("'","''")+"'";
+const manifest=JSON.parse(await read('review/platform-manifest.json'));
+let sql="begin;\nlock table "+manifest.tables.map(t=>'public.'+t.table).join(',')+" in access exclusive mode;\ndo $$ begin\n";
+for(const t of manifest.tables)sql+=`if (select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text collate "C"),'[]') from public.${t.table} x) is distinct from (select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text collate "C"),'[]') from jsonb_populate_recordset(null::public.${t.table},${literal(JSON.stringify(t.records))}::jsonb) x) then raise exception 'BACKUP_STALE: ${t.table}';end if;\n`;
+for(const f of manifest.functions)sql+=`if (select md5(replace(pg_get_functiondef(p.oid),chr(13),'')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname=${literal(f.name)}) is distinct from ${literal(f.hash)} then raise exception 'SCHEMA_CHANGED: ${f.name}';end if;\n`;
+sql+="end $$;\nset local menosaz.backup_verified='yes';\n";
+for(const n of ['202610150008_platform.sql','202610150009_runtime_cleanup.sql'])sql+=(await read('supabase/migrations/'+n)).replace(/^begin;\s*$/gm,'').replace(/^commit;\s*$/gm,'')+'\n';
+sql+="commit;\nselect 'platform-runtime-v2-active' result,(select count(*) from businesses) businesses,(select count(*) from orders) orders,(select count(*) from platform_payments) payments;";
+await writeFile(new URL('review/catalog-release.sql',root),sql);console.log('Guarded platform/runtime release prepared');
