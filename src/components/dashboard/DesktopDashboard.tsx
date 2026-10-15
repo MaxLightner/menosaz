@@ -43,29 +43,33 @@ export const DesktopDashboard: React.FC = () => {
   const [hubKitchenQrUrl, setHubKitchenQrUrl] = useState<string>('');
 
   const baseUrl = (import.meta.env.VITE_PUBLIC_URL||window.location.origin).replace(/\/$/,'');
-  const currentTableUrl = `${baseUrl}/?view=customer&table=${selectedHubTable}&menu=${activeMenuId}&business=${business.id}`;
+  const point = servicePoints.find(p=>p.tableNumber===selectedHubTable);
+  const currentTableUrl = point?.qrCodeUrl||`${baseUrl}/?view=customer&business=${business.id}&table=${selectedHubTable}`;
   const currentWaiterUrl = `${baseUrl}/?view=waiter`;
   const currentKitchenUrl = `${baseUrl}/?view=kitchen`;
 
   useEffect(() => {
     // 1. Table QR
     QRCode.toDataURL(currentTableUrl, {
-      width: 260,
-      margin: 2,
+      width: 320,
+      margin: 4,
+      errorCorrectionLevel:'L',
       color: { dark: '#465B3F', light: '#FFFFFF' }
     }).then(setHubTableQrUrl).catch(console.error);
 
     // 2. Waiter QR
     QRCode.toDataURL(currentWaiterUrl, {
-      width: 260,
-      margin: 2,
+      width: 320,
+      margin: 4,
+      errorCorrectionLevel:'L',
       color: { dark: '#465B3F', light: '#FFFFFF' }
     }).then(setHubWaiterQrUrl).catch(console.error);
 
     // 3. Kitchen QR
     QRCode.toDataURL(currentKitchenUrl, {
-      width: 260,
-      margin: 2,
+      width: 320,
+      margin: 4,
+      errorCorrectionLevel:'L',
       color: { dark: '#B45309', light: '#FFFFFF' }
     }).then(setHubKitchenQrUrl).catch(console.error);
   }, [currentTableUrl, currentWaiterUrl, currentKitchenUrl, selectedHubTable]);
@@ -361,7 +365,7 @@ export const DesktopDashboard: React.FC = () => {
                     {/* QR Preview Box */}
                     <div className="mt-4 flex flex-col items-center justify-center p-4 bg-[#F6F7F4] rounded-2xl border border-dashed border-[#DBE2D5]">
                       {hubTableQrUrl ? (
-                        <img src={hubTableQrUrl} alt={`QR میز ${selectedHubTable}&menu=${activeMenuId}&business=${business.id}`} className="w-40 h-40 object-contain shadow-xs bg-white p-2 rounded-xl" />
+                        <img src={hubTableQrUrl} alt={`QR میز ${selectedHubTable}`} className="w-40 h-40 object-contain shadow-xs bg-white p-2 rounded-xl" />
                       ) : (
                         <div className="w-40 h-40 flex items-center justify-center text-xs text-stone-400">در حال تولید...</div>
                       )}
@@ -389,7 +393,7 @@ export const DesktopDashboard: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => copyLink(currentTableUrl, `منوی میز ${selectedHubTable}&menu=${activeMenuId}&business=${business.id}`)}
+                        onClick={() => copyLink(currentTableUrl, `منوی میز ${selectedHubTable}`)}
                         className="py-2 bg-[#EEF2E8] hover:bg-[#ECE4D8] text-[#1C1917] rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-colors"
                       >
                         <span className="material-symbols-outlined text-sm">content_copy</span>
@@ -920,7 +924,7 @@ export const DesktopDashboard: React.FC = () => {
                       {hubTableQrUrl ? (
                         <img 
                           src={hubTableQrUrl} 
-                          alt={`QR میز ${selectedHubTable}&menu=${activeMenuId}&business=${business.id}`} 
+                          alt={`QR میز ${selectedHubTable}`} 
                           className="w-44 h-44 rounded-xl shadow-xs border border-stone-200 bg-white p-2"
                         />
                       ) : (
@@ -950,7 +954,7 @@ export const DesktopDashboard: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => copyLink(currentTableUrl, `منوی میز ${selectedHubTable}&menu=${activeMenuId}&business=${business.id}`)}
+                        onClick={() => copyLink(currentTableUrl, `منوی میز ${selectedHubTable}`)}
                         className="py-2 bg-[#F6F7F4] hover:bg-[#EEF2E8] text-[#1C1917] border border-[#DBE2D5] rounded-xl text-xs font-bold flex items-center justify-center gap-1"
                       >
                         <span className="material-symbols-outlined text-sm">content_copy</span>

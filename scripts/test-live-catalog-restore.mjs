@@ -4,6 +4,7 @@ import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 process.on('uncaughtException',e=>{console.error(JSON.stringify({message:e.message,code:e.code}));process.exit(1);});
+process.stdin.setEncoding('utf8');
 let input='';for await(const chunk of process.stdin)input+=chunk;
 const backup=JSON.parse(input);input='';assert.equal(backup.format,'menosaz-before-catalog-v1');
 const {PGlite}=await import(pathToFileURL(process.env.PGLITE_MODULE));const db=new PGlite();

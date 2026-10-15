@@ -1,3 +1,6 @@
+import {orderAlerts,type AlertSnapshot} from '../lib/orderAlerts';
+import {ensureGuestSession,savedGuestSession,resetGuestSession} from '../services/guestSession';
+import {incomingNotice} from '../lib/notifications';
 import {api,BACKEND} from '../services/backend';
 import type {MenuDefinition,Category} from '../types';
 import {commandBody,type PendingCommand} from '../services/catalog';
@@ -46,6 +49,7 @@ interface CartItem {
 }
 
 interface AppContextType {
+  menuMessage:string;guestSessionClosed:boolean;startNewGuestSession:()=>void;
   categories:Category[];
   hasAnyProducts:boolean;
   menus:MenuDefinition[];activeMenuId:string;setActiveMenuId:(id:string)=>void;createMenu:(name:string,kind:string)=>Promise<MenuDefinition>;assignProductMenu:(id:string,menuId:string)=>Promise<void>;
@@ -110,11 +114,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const pendingMenu=useRef<PendingCommand>(null);
   const [menus,setMenus]=useState<MenuDefinition[]>([{id:'main',name:'رستوران',kind:'restaurant',published:true}]);
   const [activeMenuId,setMenuId]=useState(new URLSearchParams(window.location.search).get('menu')||'main');
-  function setActiveMenuId(id:string){setCart([]);setMenuId(id);}
+  function setActiveMenuId(id:string){setMenuId(id); }
   async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',commandBody({name:clean,kind},pendingMenu));pendingMenu.current=null;setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
   async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
   const [currentView, setCurrentView] = useState<AppView>(() => {
-    const view = new URLSearchParams(window.location.search).get('view') as AppView;
+    const view = new URLSearchParams(window.location.search).get('q')?'customer':new URLSearchParams(window.location.search).get('view') as AppView;
     return ['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen','test-guide'].includes(view) ? view : 'website';
   });
   useEffect(()=>{const onSitePop=()=>{const v=new URLSearchParams(window.location.search).get('view') as AppView;if(['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(v))setCurrentView(v);};window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
@@ -126,6 +130,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isSimulatingOffline, setIsSimulatingOffline] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  const [menuMessage,setMenuMessage]=useState(''),[guestSessionClosed,setGuestSessionClosed]=useState(false);
+  const workspaceGeneration=useRef(0);
+  const commandCache=useRef(new Map<string,{signature:string;key:string}>());
 
   // Core Data States
   const [business, setBusiness] = useState<Business>(() => {
@@ -327,7 +334,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Read URL query params on mount for direct table link testing
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const viewParam = params.get('view') as AppView | null;
+    const viewParam = (params.has('q')?'customer':params.get('view')) as AppView | null;
     const tableParam = params.get('table');
     if (viewParam && ['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen','test-guide'].includes(viewParam)) {
       setCurrentView(viewParam);
@@ -344,25 +351,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(()=>{if(BACKEND||!LOCAL_PREVIEW)return;const receive=(e:StorageEvent)=>{if(!e.newValue)return;try{const data=JSON.parse(e.newValue);if(e.key===LOCAL_STORAGE_KEY+'_orders')setOrders(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_serviceCalls')setServiceCalls(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_products')setProducts(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_business')setBusiness(prev=>JSON.stringify(prev)===e.newValue?prev:data);}catch{}};window.addEventListener('storage',receive);return()=>window.removeEventListener('storage',receive);},[]);
 
   useEffect(()=>{
-    if(!BACKEND)return;let stopped=false,revision=0;
-    async function sync(){const request=++revision;try{
+    if(!BACKEND)return;let stopped=false,revision=0,fetching=false;let previous:AlertSnapshot|null=null;
+    async function sync(){if(fetching)return;fetching=true;const request=++revision,generation=workspaceGeneration.current;try{
       const publicView=['customer','website','how','terms'].includes(currentView);
       const b=new URLSearchParams(window.location.search).get('business')||business.id;
-      const data=await api(publicView?'/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId):'/workspace');
+      const params=new URLSearchParams(window.location.search);
+      const fromPoint=currentView==='customer';
+      const data=await api(publicView?(fromPoint?'/public/resolve?'+new URLSearchParams({...(params.get('q')?{q:params.get('q')!}:{business:b,table:String(selectedTableNumber)}),tab:activeMenuId}).toString():'/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId)):'/workspace');
+      if(data.activeMenuId&&data.activeMenuId!==activeMenuId)setMenuId(data.activeMenuId);
+      if(data.servicePoint?.tableNumber&&data.servicePoint.tableNumber!==selectedTableNumber)setSelectedTableNumber(data.servicePoint.tableNumber);
       if(publicView&&currentView==='customer'){
-        try{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}catch{}
+        const guest=data.servicePoint?savedGuestSession(data.business.id,data.servicePoint.id):null;
+        if(guest?.sessionId){try{const status=await api('/sessions/status',guest);data.orders=status.orders;data.notices=status.notices;data.closed=status.status==='closed';}catch(error){if((error as any).code==='SESSION_INVALID')data.closed=true;else throw error;}}else{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}
       }
-      if(stopped||request!==revision)return;
+      if(stopped||request!==revision||generation!==workspaceGeneration.current)return;
+      setMenuMessage(data.message||'');setGuestSessionClosed(data.closed===true);
+      for(const alert of orderAlerts(currentView,previous,data))incomingNotice(alert.id,alert.message);
+      previous={orders:data.orders,serviceCalls:data.serviceCalls,servicePoints:data.servicePoints,notices:data.notices};
       setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setCategories(data.categories||[]);
       setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsFirebaseConnected(true);
       if(!publicView&&data.menus?.length&&!data.menus.some((m:MenuDefinition)=>m.id===activeMenuId))setMenuId(data.menus[0].id);
-    }catch(error){if(!stopped&&request===revision){setIsFirebaseConnected(false);if((error as any).status===401||(error as any).status===403){setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);}}}}
+    }catch(error){if(!stopped&&request===revision){setIsFirebaseConnected(false);if(currentView==='customer'){setMenuMessage((error as Error).message);setProducts([]);setMenus([]);setCategories([]);}if((error as any).status===401||(error as any).status===403){setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);}}}finally{fetching=false;}}
     sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);
     return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};
-  },[activeMenuId,currentView]);
-  useEffect(()=>{if(!BACKEND)return;const clear=()=>{setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);setCart([]);setIsFirebaseConnected(false);for(const key of ['orders','products','business','servicePoints','serviceCalls'])localStorage.removeItem(LOCAL_STORAGE_KEY+'_'+key);};window.addEventListener('workspace-clear',clear);return()=>window.removeEventListener('workspace-clear',clear);},[]);
+  },[activeMenuId,currentView,selectedTableNumber]);
+  useEffect(()=>{if(!BACKEND)return;const clear=()=>{workspaceGeneration.current++;setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);setCart([]);setIsFirebaseConnected(false);for(const key of ['orders','products','business','servicePoints','serviceCalls'])localStorage.removeItem(LOCAL_STORAGE_KEY+'_'+key);};window.addEventListener('workspace-clear',clear);return()=>window.removeEventListener('workspace-clear',clear);},[]);
   const pendingGuest=useRef<{signature:string;token:string;key:string}|null>(null);
-  async function remoteOrder(id:string,action:string,itemId?:string,note?:string){const o=await api<Order>('/orders/'+id+'/action',{action,itemId,note});setOrders(prev=>prev.map(v=>v.id===id?o:v));}
+  async function remoteOrder(id:string,action:string,itemId?:string,note?:string){const current=orders.find(o=>o.id===id);if(!current?.version)throw Error('سفارش را دوباره بارگذاری کن');const body={action,itemId,note,expectedVersion:current.version},signature=JSON.stringify(body);let pending=commandCache.current.get(id);if(pending?.signature!==signature){pending={signature,key:crypto.randomUUID()};commandCache.current.set(id,pending);}const o=await api<Order>('/orders/'+id+'/action',{...body,idempotencyKey:pending.key});commandCache.current.delete(id);setOrders(prev=>prev.map(v=>v.id===id?o:v));}
   // Initialize and attach Firestore Real-Time Sync
   useEffect(() => {
     if(LOCAL_PREVIEW||BACKEND)return;
@@ -565,7 +580,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     items: CartItem[],
     orderBusinessId:string='pich-shemroon'
   ): Promise<string> => {
-    if(BACKEND&&!orderBusinessId.startsWith('demo-')){const signature=JSON.stringify([activeMenuId,tableNumber,items]);if(pendingGuest.current?.signature!==signature)pendingGuest.current={signature,token:crypto.randomUUID(),key:crypto.randomUUID()};const grant=pendingGuest.current;const o=await api<Order>('/orders',{businessId:business.id,menuId:activeMenuId,tableNumber,customerName,customerNotes,idempotencyKey:grant.key,guestToken:grant.token,items:items.map(i=>({productId:i.product.id,quantity:i.quantity,notes:i.notes,selectedOptions:i.selectedOptions}))});try{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');sessionStorage.setItem('menosaz-guest-grants',JSON.stringify([{id:o.id,businessId:o.businessId,token:grant.token},...grants].slice(0,10)));}catch{}pendingGuest.current=null;setOrders(prev=>[o,...prev]);setCart([]);showToast('سفارش ثبت شد');return o.id;}
+    if(BACKEND&&!orderBusinessId.startsWith('demo-')){const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw Error('سرویس‌پوینت پیدا نشد');const guest=await ensureGuestSession(business.id,point.id,tableNumber);const signature=JSON.stringify([guest.sessionId,tableNumber,customerName,customerNotes,items]);if(pendingGuest.current?.signature!==signature)pendingGuest.current={signature,token:guest.guestToken,key:crypto.randomUUID()};const grant=pendingGuest.current;const o=await api<Order>('/orders',{businessId:business.id,sessionId:guest.sessionId,tableNumber,customerName,customerNotes,idempotencyKey:grant.key,guestToken:guest.guestToken,items:items.map(i=>({productId:i.product.id,quantity:i.quantity,notes:i.notes,selectedOptions:i.selectedOptions}))});pendingGuest.current=null;setOrders(prev=>prev.some(x=>x.id===o.id)?prev:[...prev,o]);setCart([]);showToast('سفارش ثبت شد');return o.id;}
     const orderNumNumber = Math.floor(1000 + Math.random() * 9000);
     const orderId = `order-${Date.now()}`;
     const orderNumberStr = `#${orderNumNumber}`;
@@ -659,7 +674,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     type: 'waiter' | 'bill' | 'napkin' | 'custom', 
     message?: string
   ): Promise<string> => {
-    if(BACKEND){const call=await api<ServiceCall>('/calls',{businessId:business.id,tableNumber,type,message});setServiceCalls(prev=>[call,...prev]);return call.id;}
+    if(BACKEND){const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw Error('سرویس‌پوینت پیدا نشد');const guest=await ensureGuestSession(business.id,point.id,tableNumber);const call=await api<ServiceCall>('/calls',{...guest,type:type==='bill'?'cashier':type==='napkin'?'utensils':type,message});setServiceCalls(prev=>[call,...prev]);return call.id;}
     const newCall: ServiceCall = {
       id: `call-${Date.now()}`,
       tableNumber,
@@ -868,6 +883,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   async function markDelivered(id:string){if(BACKEND){await remoteOrder(id,'deliver');return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(!canDeliver(o))throw Error('Restaurant approval and payment required');return {...o,status:'delivered',deliveryStatus:'delivered',items:o.items.map(i=>({...i,deliveryStatus:'delivered'}))};});showToast('تحویل به مشتری ثبت شد');}
   async function removeOrderItem(id:string,itemId:string){if(BACKEND){await remoteOrder(id,'remove',itemId);return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(o.deliveryStatus==='delivered'||o.status==='cancelled')throw Error('Order closed');const items=o.items.filter(i=>i.id!==itemId);if(items.length===o.items.length)throw Error('Item not found');return {...o,items,totalAmount:items.reduce((sum,i)=>sum+i.itemTotal,0),status:items.length?'pending_waiter':'cancelled',restaurantConfirmed:false};});showToast('غذا حذف شد؛ تغییرات نیاز به تأیید و ارسال دارند');}
   async function setItemWaiterNote(id:string,itemId:string,note:string){if(BACKEND){await remoteOrder(id,'note',itemId,note);return;}if(currentView!=='waiter')throw Error('Waiter only');await patchStaffOrder(id,o=>{if(o.deliveryStatus==='delivered'||o.status==='cancelled')throw Error('Order closed');return {...o,items:o.items.map(i=>i.id===itemId?{...i,waiterNotes:note.trim().slice(0,500)}:i),status:'pending_waiter',restaurantConfirmed:false};});showToast('توضیح ذخیره شد؛ تغییرات را برای رستوران ارسال کن');}
+  function startNewGuestSession(){const point=servicePoints.find(p=>p.tableNumber===selectedTableNumber);if(!point)return;resetGuestSession(business.id,point.id);try{const old=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');sessionStorage.setItem('menosaz-guest-grants',JSON.stringify(old.filter((g:any)=>g.businessId!==business.id)));}catch{}pendingGuest.current=null;setCart([]);setOrders([]);setGuestSessionClosed(false);showToast('می‌توانی سفارش تازه ثبت کنی.');window.dispatchEvent(new Event('workspace-auth'));}
   const setCartNotes=(id:string,note:string)=>setCart(prev=>prev.map(c=>c.id===id?{...c,notes:note.slice(0,500)}:c));
 
   return (
@@ -879,7 +895,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentView,
         business:{...business,...menus.find(m=>m.id===activeMenuId)?.appearance},
         updateBusinessSettings,
-        menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
+        menuMessage,guestSessionClosed,startNewGuestSession,menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
         hasAnyProducts:products.length>0,
         products:products.filter(p=>(p.menuId||'main')===activeMenuId),
         updateProductImage,updateProductPrice,

@@ -11,7 +11,9 @@
     "lint": "tsc --noEmit",
     "test:catalog": "node scripts/test-catalog.mjs",
     "test:access": "node scripts/test-catalog.mjs --access",
-    "server": "tsx server/index.ts"
+    "server": "tsx server/index.ts",
+    "test:domains": "node scripts/test-catalog.mjs --orders",
+    "test:notifications": "tsx scripts/test-notifications.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

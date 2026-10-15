@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {PGlite} from '@electric-sql/pglite';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
 process.on('uncaughtException',e=>{console.error(JSON.stringify({message:e.message,code:e.code}));process.exit(1);});
+process.stdin.setEncoding('utf8');
 let input='';for await(const c of process.stdin)input+=c;const backup=JSON.parse(input);input='';
 assert.equal(backup.format,'menosaz-before-access-v1');
 const db=new PGlite(),root=new URL('../',import.meta.url);

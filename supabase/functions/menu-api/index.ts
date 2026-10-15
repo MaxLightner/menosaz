@@ -30,7 +30,7 @@ if(path==='/auth/register'){if(!uid)return reply({error:'ابتدا شماره �
 if(path==='/auth/logout'){if(token)await fetch(url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:anon,Authorization:'Bearer '+token}});return reply({ok:true});}
 if(path==='/presence'&&req.method==='POST'){const r=await db.rpc('menu_api_v2',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});return reply(r.data?.data||{error:'درخواست نامعتبر'},r.data?.status||400);}
 if(path.startsWith('/billing/')){if(!uid)return reply({error:'ابتدا وارد حساب شو'},401);if(req.method!=='POST'||!['/billing/create','/billing/verify'].includes(path))return reply({error:'مسیر معتبر نیست'},404);const allowed=await db.rpc('menu_rate',{p_key:'billing-'+uid,p_max:12});if(allowed.data!==true)return reply({error:'کمی صبر کن و دوباره تلاش کن'},429);return reply(await billingRequest(db,uid,path,body));}
-if(!uid&&!['/health','/public/menu','/public/feed','/orders','/order-status','/calls'].includes(path))return reply({error:'ابتدا وارد حساب شو'},401);
+if(!uid&&!['/health','/public/menu','/public/feed','/public/resolve','/sessions/open','/sessions/status','/orders','/order-status','/calls'].includes(path))return reply({error:'ابتدا وارد حساب شو'},401);
 if(path==='/profile'&&uid){const result=await db.rpc('menu_profile',{p_uid:uid,...(req.method==='POST'?{p_body:body}:{})});if(result.error)return reply({error:'نام و نوع مجموعه را کامل کن'},400);return reply(result.data);}
 if(['/product-images','/background-images'].includes(path)&&req.method==='POST'&&uid){
  const workspace=await db.rpc('menu_api_v2',{p_path:'/workspace',p_method:'GET',p_body:{},p_uid:uid});if(workspace.error||workspace.data.status!==200)return reply({error:'دسترسی مجموعه لازم است'},403);

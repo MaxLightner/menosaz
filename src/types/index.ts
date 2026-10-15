@@ -55,7 +55,7 @@ export interface OptionGroup {
   options: ProductOption[];
 }
 
-export interface MenuDefinition {id:string;name:string;kind:string;published:boolean;version?:number;appearance?:{menuPalette?:string;menuPaper?:number;menuBackgroundImage?:string};}
+export interface MenuDefinition {id:string;name:string;kind:string;published:boolean;version?:number;scheduleMode?:'always'|'scheduled';timezone?:string;windows?:{weekday:number;startMinute:number;endMinute:number;endDayOffset:number}[];appearance?:{menuPalette?:string;menuPaper?:number;menuBackgroundImage?:string};}
 
 export interface Product {
   version?:number;
@@ -77,6 +77,11 @@ export interface Product {
 }
 
 export interface ServicePoint {
+  version?:number;
+  qrToken?:string;
+  menuMode?:'all'|'selected';
+  menuIds?:string[];
+  activeSession?:{id:string;openedAt:string;durationSeconds:number};
   id: string;
   businessId: string;
   tableNumber: number;
@@ -88,6 +93,7 @@ export interface ServicePoint {
 }
 
 export interface OrderItemOption {
+  groupId?:string;optionId?:string;
   groupTitle: string;
   optionName: string;
   extraPrice: number;
@@ -107,6 +113,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  version?:number;
   menuId?:string;
   restaurantConfirmed?:boolean;
   id: string;

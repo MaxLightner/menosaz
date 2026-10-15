@@ -33,7 +33,8 @@ jobs:
       - name: Check types and catalog/access migrations
         run: |
           pnpm run lint
-          pnpm run test:access
+          pnpm run test:domains
+          pnpm run test:notifications
       - name: Build public site
         env:
           VITE_PUBLIC_URL: https://maxlightner.github.io/menosaz

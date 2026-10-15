@@ -1,3 +1,4 @@
+import {PointMenus} from '../dashboard/PointMenus';
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../../context/AppContext';
@@ -29,7 +30,8 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   const [kitchenQrUrl, setKitchenQrUrl] = useState<string>('');
 
   const baseUrl = (import.meta.env.VITE_PUBLIC_URL||window.location.origin).replace(/\/$/,'');
-  const currentTableUrl = `${baseUrl}/?view=customer&table=${selectedTable}&menu=${activeMenuId}&business=${business.id}`;
+  const point = servicePoints.find(p=>p.tableNumber===selectedTable);
+  const currentTableUrl = point?.qrCodeUrl||`${baseUrl}/?view=customer&business=${business.id}&table=${selectedTable}`;
   const currentWaiterUrl = `${baseUrl}/?view=waiter`;
   const currentKitchenUrl = `${baseUrl}/?view=kitchen`;
 
@@ -43,22 +45,25 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   useEffect(() => {
     // 1. Table QR
     QRCode.toDataURL(currentTableUrl, {
-      width: 280,
-      margin: 2,
+      width: 320,
+      margin: 4,
+      errorCorrectionLevel:'L',
       color: { dark: '#9e2016', light: '#FFFDF9' }
     }).then(setTableQrUrl).catch(console.error);
 
     // 2. Waiter QR
     QRCode.toDataURL(currentWaiterUrl, {
-      width: 280,
-      margin: 2,
+      width: 320,
+      margin: 4,
+      errorCorrectionLevel:'L',
       color: { dark: '#3D4F41', light: '#FFFDF9' }
     }).then(setWaiterQrUrl).catch(console.error);
 
     // 3. Kitchen QR
     QRCode.toDataURL(currentKitchenUrl, {
-      width: 280,
-      margin: 2,
+      width: 320,
+      margin: 4,
+      errorCorrectionLevel:'L',
       color: { dark: '#B45309', light: '#FFFDF9' }
     }).then(setKitchenQrUrl).catch(console.error);
   }, [currentTableUrl, currentWaiterUrl, currentKitchenUrl, selectedTable]);
@@ -156,6 +161,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
         </div>
 
         {/* Tab 1: Service Points / Tables */}
+        {activeTab==='tables'&&<PointMenus key={selectedTable} number={selectedTable}/>}
         {activeTab === 'tables' && (
           <div className="p-5 space-y-4 overflow-y-auto">
             <div className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#E8DFD3]">
@@ -186,7 +192,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
             <div className="bg-white border-2 border-dashed border-[#E8DFD3] rounded-3xl p-5 flex flex-col sm:flex-row items-center gap-5">
               <div className="p-2.5 bg-[#FAF7F2] rounded-2xl shadow-sm border border-[#E8DFD3] shrink-0">
                 {tableQrUrl ? (
-                  <img src={tableQrUrl} alt={`QR میز ${selectedTable}&menu=${activeMenuId}&business=${business.id}`} className="w-44 h-44 object-contain" />
+                  <img src={tableQrUrl} alt={`QR میز ${selectedTable}`} className="w-64 h-64 max-w-full object-contain" />
                 ) : (
                   <div className="w-44 h-44 flex items-center justify-center text-xs text-stone-400">در حال تولید...</div>
                 )}
@@ -218,7 +224,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
                     <span>مشاهده مستقیم اپ مشتری</span>
                   </button>
                   <button
-                    onClick={() => copyToClipboard(currentTableUrl, `منوی میز ${selectedTable}&menu=${activeMenuId}&business=${business.id}`)}
+                    onClick={() => copyToClipboard(currentTableUrl, `منوی میز ${selectedTable}`)}
                     className="px-3 py-2 bg-[#FAF7F2] hover:bg-[#F4EFE6] border border-[#E8DFD3] text-[#1C1917] rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
                   >
                     <span className="material-symbols-outlined text-sm">content_copy</span>

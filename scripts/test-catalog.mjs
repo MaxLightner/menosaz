@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-process.on('uncaughtException',e=>{console.error(JSON.stringify({message:e.message,code:e.code,where:e.where,detail:e.detail,context:e.query?.slice(Math.max(0,Number(e.position)-150),Number(e.position)+150),stack:e.stack?.split('\n').filter(l=>l.includes('test-catalog')).join('\n')}));process.exit(1);});
+process.on('uncaughtException',e=>{console.error(JSON.stringify({message:e.message,code:e.code,where:e.where,detail:e.detail,context:e.query?.slice(Math.max(0,Number(e.position)-150),Number(e.position)+150),stack:e.stack?.split('\n').filter(l=>l.includes('scripts/test-')).join('\n')}));process.exit(1);});
 const modulePath=process.env.PGLITE_MODULE;
 const {PGlite}=modulePath?await import(pathToFileURL(modulePath)):await import('@electric-sql/pglite');
 const db=new PGlite();
@@ -68,5 +68,7 @@ assert.equal(profile.business.name,'کافه جدید');checked();
 assert.equal(await scalar("select count(*)::int n from menu_workspaces where payload ? 'business'"),0);checked();
 assert.equal((await call('/menus/'+m.id,'PATCH',{appearance:{menuBackgroundImage:'https://other.invalid/x.png'}})).status,400);checked();
 console.log(`PASS: ${checks} catalog migration/ownership/atomicity/order-bridge checks`);
-if(process.env.TEST_ACCESS==='yes'||process.argv.includes('--access')) await (await import('./test-access.mjs')).runAccessTests(db,users,order);
+if(process.env.TEST_ACCESS==='yes'||['--access','--points','--orders'].some(a=>process.argv.includes(a))) await (await import('./test-access.mjs')).runAccessTests(db,users,order);
+if(['--points','--orders'].some(a=>process.argv.includes(a))) await (await import('./test-points.mjs')).runPointTests(db,users);
+if(process.argv.includes('--orders')) await (await import('./test-orders.mjs')).runOrderTests(db,users,order,grant);
 await db.close();
