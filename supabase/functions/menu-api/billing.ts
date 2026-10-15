@@ -1,6 +1,6 @@
 // @ts-nocheck
 const MERCHANT='24810652-1c44-4df8-9761-072685063809';
-const SITE='https://menosaz-menu.sharp-wren-1486.chatgpt.site';
+const SITE='https://maxlightner.github.io/menosaz';
 export async function sandboxGateway(method,body){
  const r=await fetch('https://sandbox.zarinpal.com/pg/v4/payment/'+method+'.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({merchant_id:MERCHANT,...body}),signal:AbortSignal.timeout(20000)});
  const data=await r.json();if(!r.ok||!data.data||![100,101].includes(data.data.code))throw Object.assign(Error('درگاه آزمایشی پاسخ موفق نداد؛ دوباره تلاش کن'),{status:502});return data.data;

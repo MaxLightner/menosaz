@@ -30,6 +30,10 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check types and catalog/access migrations
+        run: |
+          pnpm run lint
+          pnpm run test:access
       - name: Build public site
         env:
           VITE_PUBLIC_URL: https://maxlightner.github.io/menosaz

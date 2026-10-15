@@ -129,6 +129,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Core Data States
   const [business, setBusiness] = useState<Business>(() => {
+    if(BACKEND)return INITIAL_BUSINESS;
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_business`);
     if (saved) {
       try {
@@ -140,6 +141,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
+    if(BACKEND)return [];
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_products`);
     if (saved) {
       try {
@@ -153,6 +155,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [servicePoints, setServicePoints] = useState<ServicePoint[]>(() => {
+    if(BACKEND)return [];
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_servicePoints`);
     if (saved) {
       try {
@@ -166,6 +169,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
+    if(BACKEND)return [];
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_orders`);
     if (saved) {
       try {
@@ -188,6 +192,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Table Service Calls State (Waiters, Bill Requests, Assistance)
   const [serviceCalls, setServiceCalls] = useState<ServiceCall[]>(() => {
+    if(BACKEND)return [];
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_serviceCalls`);
     if (saved) {
       try {
@@ -253,23 +258,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   useEffect(() => {
+    if(BACKEND)return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_serviceCalls`, JSON.stringify(serviceCalls));
   }, [serviceCalls]);
 
   // Save to LocalStorage for persistence across full page reloads
   useEffect(() => {
+    if(BACKEND)return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_business`, JSON.stringify(business));
   }, [business]);
 
   useEffect(() => {
+    if(BACKEND)return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(products));
   }, [products]);
 
   useEffect(() => {
+    if(BACKEND)return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_servicePoints`, JSON.stringify(servicePoints));
   }, [servicePoints]);
 
   useEffect(() => {
+    if(BACKEND)return;
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_orders`, JSON.stringify(orders));
   }, [orders]);
 
@@ -331,7 +341,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
 
-  useEffect(()=>{if(!LOCAL_PREVIEW&&!BACKEND&&!BACKEND)return;const receive=(e:StorageEvent)=>{if(!e.newValue)return;try{const data=JSON.parse(e.newValue);if(e.key===LOCAL_STORAGE_KEY+'_orders')setOrders(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_serviceCalls')setServiceCalls(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_products')setProducts(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_business')setBusiness(prev=>JSON.stringify(prev)===e.newValue?prev:data);}catch{}};window.addEventListener('storage',receive);return()=>window.removeEventListener('storage',receive);},[]);
+  useEffect(()=>{if(BACKEND||!LOCAL_PREVIEW)return;const receive=(e:StorageEvent)=>{if(!e.newValue)return;try{const data=JSON.parse(e.newValue);if(e.key===LOCAL_STORAGE_KEY+'_orders')setOrders(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_serviceCalls')setServiceCalls(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_products')setProducts(prev=>JSON.stringify(prev)===e.newValue?prev:data);if(e.key===LOCAL_STORAGE_KEY+'_business')setBusiness(prev=>JSON.stringify(prev)===e.newValue?prev:data);}catch{}};window.addEventListener('storage',receive);return()=>window.removeEventListener('storage',receive);},[]);
 
   useEffect(()=>{
     if(!BACKEND)return;let stopped=false,revision=0;
@@ -346,10 +356,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setCategories(data.categories||[]);
       setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsFirebaseConnected(true);
       if(!publicView&&data.menus?.length&&!data.menus.some((m:MenuDefinition)=>m.id===activeMenuId))setMenuId(data.menus[0].id);
-    }catch{if(!stopped&&request===revision)setIsFirebaseConnected(false);}}
+    }catch(error){if(!stopped&&request===revision){setIsFirebaseConnected(false);if((error as any).status===401||(error as any).status===403){setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);}}}}
     sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);
     return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};
   },[activeMenuId,currentView]);
+  useEffect(()=>{if(!BACKEND)return;const clear=()=>{setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);setCart([]);setIsFirebaseConnected(false);for(const key of ['orders','products','business','servicePoints','serviceCalls'])localStorage.removeItem(LOCAL_STORAGE_KEY+'_'+key);};window.addEventListener('workspace-clear',clear);return()=>window.removeEventListener('workspace-clear',clear);},[]);
   const pendingGuest=useRef<{signature:string;token:string;key:string}|null>(null);
   async function remoteOrder(id:string,action:string,itemId?:string,note?:string){const o=await api<Order>('/orders/'+id+'/action',{action,itemId,note});setOrders(prev=>prev.map(v=>v.id===id?o:v));}
   // Initialize and attach Firestore Real-Time Sync

@@ -67,4 +67,6 @@ const profile=(await db.query('select menu_profile($1,$2) as p',[users[0],{name:
 assert.equal(profile.business.name,'کافه جدید');checked();
 assert.equal(await scalar("select count(*)::int n from menu_workspaces where payload ? 'business'"),0);checked();
 assert.equal((await call('/menus/'+m.id,'PATCH',{appearance:{menuBackgroundImage:'https://other.invalid/x.png'}})).status,400);checked();
-await db.close();console.log(`PASS: ${checks} catalog migration/ownership/atomicity/order-bridge checks`);
+console.log(`PASS: ${checks} catalog migration/ownership/atomicity/order-bridge checks`);
+if(process.env.TEST_ACCESS==='yes'||process.argv.includes('--access')) await (await import('./test-access.mjs')).runAccessTests(db,users,order);
+await db.close();
