@@ -212,7 +212,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if(['menuPalette','menuPaper','menuBackgroundImage'].some(k=>k in partial)){const menu=await api<MenuDefinition>('/menus/'+activeMenuId,{appearance:partial},'PATCH');setMenus(prev=>prev.map(m=>m.id===menu.id?menu:m));}else setBusiness(await api<Business>('/business',partial,'PATCH'));showToast('تنظیمات ذخیره شد');return;
   };
   // All writes are acknowledged by the same Supabase command API.
-  async function updateProductImage(id:string,dataUrl:string){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl});const p=await api<Product>('/products/'+id,{imageUrl:uploaded.imageUrl,customImage:true},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));showToast('عکس غذا ذخیره شد');}
+  async function updateProductImage(id:string,image:string){
+    let imageUrl=image,customImage=false;
+    if(image.startsWith('data:')){
+      const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:image});
+      imageUrl=uploaded.imageUrl;customImage=true;
+    }else if(!/^\\/(?:media|menu-assets)\\/[a-zA-Z0-9._-]+$/.test(image))
+      throw Error('عکس انتخاب‌شده معتبر نیست.');
+    const p=await api<Product>('/products/'+id,{imageUrl,customImage},'PATCH');
+    setProducts(prev=>prev.map(v=>v.id===id?p:v));
+    showToast('تصویر آیتم ذخیره شد');
+  }
   const updateProductPrice = async (productId: string, newPrice: number) => {
     const p=await api<Product>('/products/'+productId,{price:newPrice},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));showToast('قیمت ذخیره شد');return;
   };
