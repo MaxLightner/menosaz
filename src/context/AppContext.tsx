@@ -314,7 +314,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
         business:{...business,...menus.find(m=>m.id===activeMenuId)?.appearance},
         updateBusinessSettings,
         menuMessage,guestSessionClosed,startNewGuestSession,menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
-        hasAnyProducts:products.length>0,
+        hasAnyProducts:products.some(p=>(p.menuId||'main')===activeMenuId),
         products:products.filter(p=>(p.menuId||'main')===activeMenuId),
         updateProductImage,updateProductPrice,
         toggleProductAvailability,
