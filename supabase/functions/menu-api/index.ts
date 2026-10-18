@@ -9,7 +9,7 @@ const origins=new Set([new URL(publicSiteUrl()).origin,'https://maxlightner.gith
 const normalize=(value:unknown)=>{let p=String(value||'').replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[\s()-]/g,'');p=p.replace(/^\+98|^0098|^98/,'0');if(!/^09\d{9}$/.test(p))throw Error('شماره موبایل معتبر وارد کن');return '+98'+p.slice(1);};
 Deno.serve(async req=>{const origin=req.headers.get('origin')||'',headers={'Content-Type':'application/json','Access-Control-Allow-Origin':origins.has(origin)?origin:'https://maxlightner.github.io','Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info,x-menu-session','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS','Vary':'Origin'};const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data,(field,value)=>{if(field==='qrCodeUrl'&&typeof value==='string'){const token=new URL(value).searchParams.get('q');if(token&&/^[0-9a-f]{32}$/.test(token))return publicSiteUrl()+'/?q='+token;}return value;}),{status,headers});if(origin&&!origins.has(origin))return reply({error:'مبدأ درخواست معتبر نیست'},403);if(req.method==='OPTIONS')return new Response(null,{status:204,headers});try{const u=new URL(req.url),path=u.pathname.replace(/^.*\/menu-api/,'')||'/health',body=req.method==='GET'?Object.fromEntries(u.searchParams):await req.json();if(JSON.stringify(body).length>4*1024*1024)return reply({error:'حجم درخواست زیاد است'},413);
 const client=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});const token=req.headers.get('x-menu-session');let uid=null,userPhone='';if(token){const {data,error}=await client.auth.getUser(token);if(error||!data.user)return reply({error:'نشست منقضی شده؛ دوباره وارد شو'},401);uid=data.user.id;userPhone=data.user.phone||'';}
-if(uid&&!['/auth/logout','/auth/request','/auth/verify'].includes(path)&&!path.startsWith('/staff/')&&!path.startsWith('/feedback/')&&!path.startsWith('/club/')){const checked=await db.rpc('access_authorize',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});if(checked.error)return reply({error:'بررسی دسترسی انجام نشد'},503);if(checked.data?.allowed!==true){const {allowed,status,...data}=checked.data;return reply(data,status||403);}}
+if(uid&&!['/auth/logout','/auth/request','/auth/verify'].includes(path)&&path!='/product-gallery'&&!path.startsWith('/staff/')&&!path.startsWith('/feedback/')&&!path.startsWith('/club/')){const checked=await db.rpc('access_authorize',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});if(checked.error)return reply({error:'بررسی دسترسی انجام نشد'},503);if(checked.data?.allowed!==true){const {allowed,status,...data}=checked.data;return reply(data,status||403);}}
 const ip=req.headers.get('x-forwarded-for')?.split(',')[0]||'unknown';const fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip)))).map(v=>v.toString(16).padStart(2,'0')).join('');const limit=await db.rpc('menu_rate',{p_key:fingerprint,p_max:120});if(limit.error||limit.data!==true)return reply({error:'تعداد درخواست‌ها زیاد است؛ کمی صبر کن'},429);// Staff/feedback operations have their own security-definer RPC authorization checks.
 if(path==='/staff/check'&&req.method==='POST'){
  const bid=String(body.businessId||'').slice(0,120);
@@ -83,6 +83,25 @@ if(path==='/admin/content-images'&&req.method==='POST'&&uid){
  const assetUrl=db.storage.from('menu-images').getPublicUrl(filename).data.publicUrl;
  const registered=await db.from('platform_media').insert({id,storage_path:filename,url:assetUrl,mime:image.mime,bytes:image.bytes.length,width:image.width,height:image.height,created_by:uid});
  if(registered.error){await db.storage.from('menu-images').remove([filename]);return reply({error:'ثبت رسانه انجام نشد'},500);}return reply({imageUrl:assetUrl});
+}
+// Business image gallery: never accept businessId from the client.
+// Verify the same permission used for uploads, then derive tenant from the server-side account.
+if(path==='/product-gallery'&&req.method==='GET'&&uid){
+ const permitted=await db.rpc('access_authorize',{p_path:'/product-images',p_method:'POST',p_body:{},p_uid:uid});
+ if(permitted.error)return reply({error:'بررسی دسترسی گالری انجام نشد'},503);
+ if(permitted.data?.allowed!==true)return reply({error:'فقط مدیر مجاز به مشاهده گالری تصاویر مجموعه است'},403);
+ const snap=await db.rpc('menu_api_v2',{p_path:'/workspace',p_method:'GET',p_body:{},p_uid:uid});
+ if(snap.error||snap.data?.status!==200||!snap.data.data?.business?.id)
+   return reply({error:'مجموعه فعال یافت نشد'},403);
+ const bid=snap.data.data.business.id;
+ const listed=await db.from('media_assets')
+   .select('id,url,width,height,created_at')
+   .eq('business_id',bid).eq('purpose','product').eq('custom',true)
+   .order('created_at',{ascending:false}).limit(200);
+ if(listed.error)return reply({error:'خواندن گالری رستوران انجام نشد'},503);
+ return reply({items:(listed.data||[]).map(a=>({
+   id:a.id,url:a.url,width:a.width,height:a.height,createdAt:a.created_at
+ }))});
 }
 if(path==='/profile'&&uid){const result=await db.rpc('menu_profile',{p_uid:uid,...(req.method==='POST'?{p_body:body}:{})});if(result.error)return reply({error:'نام و نوع مجموعه را کامل کن'},400);return reply(result.data);}
 if(['/product-images','/background-images'].includes(path)&&req.method==='POST'&&uid){
