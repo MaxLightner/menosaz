@@ -4,7 +4,7 @@ import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
 import {MenusManager} from './MenusManager';
 import {usePresentation} from '../../context/PresentationContext';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AllQRAccessModal } from '../modals/AllQRAccessModal';
 import { AddDishModal } from '../modals/AddDishModal';
@@ -22,7 +22,8 @@ export const MobileDashboard: React.FC = () => {
   const {openSample}=usePresentation();
 
   const [editingImage,setEditingImage]=useState<Product|null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'tables' | 'menu' | 'settings'>('menu');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'tables' | 'menu' | 'settings'>(()=>{try{const saved=sessionStorage.getItem('mizato-mobile-panel');return ["overview","orders","tables","menu","settings"].includes(saved||'')?saved as 'overview' | 'orders' | 'tables' | 'menu' | 'settings':'menu';}catch{return 'menu';}});
+  useEffect(()=>{try{sessionStorage.setItem('mizato-mobile-panel',activeTab);}catch{}},[activeTab]);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isAddDishModalOpen, setIsAddDishModalOpen] = useState(false);
   const [selectedQrTable, setSelectedQrTable] = useState(4);
