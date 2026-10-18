@@ -18,6 +18,7 @@ export const DesktopDashboard: React.FC = () => {
     updateBusinessSettings, 
     products, 
     toggleProductAvailability,
+    archiveProduct,
     orders, 
     servicePoints, 
     toggleTableOccupancy,
@@ -77,6 +78,14 @@ export const DesktopDashboard: React.FC = () => {
 
   const printAllTableStands=()=>printQrStands(servicePoints,business.name,baseUrl,showToast);
 
+  const [archivingId,setArchivingId]=useState<string|null>(null);
+  async function removeProductFromMenu(product:Product){
+    if(!window.confirm('«'+product.name+'» از منوی مشتری حذف و به آرشیو خصوصی منتقل شود؟'))return;
+    setArchivingId(product.id);
+    try{await archiveProduct(product.id);}
+    catch(error){showToast((error as Error).message||'حذف از منو انجام نشد.');}
+    finally{setArchivingId(null);}
+  }
   // Filtered products for quick editor
   const filteredProducts = products.filter(p => 
     menuSearch.trim() === '' || 
@@ -1260,7 +1269,7 @@ export const DesktopDashboard: React.FC = () => {
                             </span>
                           </label>
                         </td>
-                        <td className="py-2.5 px-3 text-left"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
+                        <td className="py-2.5 px-3 text-left"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>{!menus.some(m=>m.id===(prod.menuId||'main')&&m.name==='آرشیو آیتم‌های حذف‌شده')&&<button type="button" className="text-xs text-red-700 border border-red-200 rounded-lg px-2 py-1" title="انتقال به آرشیو خصوصی" disabled={archivingId===prod.id} aria-label={'حذف '+prod.name+' از منو'} onClick={()=>removeProductFromMenu(prod)}>{archivingId===prod.id?'در حال حذف…':'حذف'}</button>}
                           <button 
                             onClick={() => {
                               setSelectedTableNumber(4);
