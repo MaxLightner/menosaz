@@ -60,6 +60,7 @@ export const MobileDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1">
+            <button type="button" title="بازگشت به صفحه قبل" aria-label="بازگشت" className="p-1.5 rounded-lg text-[#506354]" onClick={()=>window.history.state?.mizatoView?window.history.back():setCurrentView('website')}><span className="material-symbols-outlined text-[20px]">arrow_forward</span></button>
             <button 
               onClick={() => {
                 setSelectedQrTable(4);
@@ -79,6 +80,8 @@ export const MobileDashboard: React.FC = () => {
             </button>
           </div>
         </header>
+
+        <div className="px-4 pt-2"><label className="flex items-center gap-2 text-xs text-[#506354]">بخش پنل <select aria-label="انتخاب بخش پنل موبایل" className="flex-1 border border-[#DBE2D5] rounded-lg bg-white p-2" value={activeTab} onChange={e=>setActiveTab(e.target.value as typeof activeTab)}><option value="menu">منو و قیمت‌ها</option><option value="overview">نمای کلی</option><option value="orders">سفارش‌ها</option><option value="tables">میزها</option><option value="settings">تنظیمات</option></select></label></div>
 
         {/* 2. MAIN MOBILE CONTENT */}
         <main className="flex-1 px-3.5 pt-3 space-y-3.5">
