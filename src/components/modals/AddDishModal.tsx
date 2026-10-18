@@ -1,3 +1,5 @@
+import {IMAGE_CHOICES,sourcePhotoForItem,suggestedMenuImage} from '../../services/menuImages';
+import {displayImagePath} from '../../lib/imagePath';
 import {readProductImage} from '../../lib/productImage';
 import React, { useState,useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
@@ -18,23 +20,31 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(15);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Curated food images
-  const sampleImages = [{"label": "کباب برگ", "url": "/media/iran-2.webp"}, {"label": "برگر", "url": "/media/food-2.webp"}, {"label": "پیتزا", "url": "/media/food-0.webp"}, {"label": "اسپرسو", "url": "/menu-assets/espresso.webp"}, {"label": "کاپوچینو", "url": "/menu-assets/cappuccino.webp"}, {"label": "آبمیوه", "url": "/menu-assets/orange-juice.webp"}, {"label": "بستنی", "url": "/menu-assets/icecream.webp"}];
+  const sampleImages=IMAGE_CHOICES.map(([label,file])=>({
+    label,
+    url:/^(iran|food)-\\d+$/.test(file)?'/media/'+file+'.webp':'/menu-assets/'+file+'.webp',
+    preview:'/menu-tiles/'+file+'.webp'
+  }));
+  const [selectedImage,setSelectedImage]=useState('');
+  const [imagePicked,setImagePicked]=useState(false);
+  const categoryName=categories.find(c=>c.id===categoryId)?.name||'';
+  const suggestedPhoto=sourcePhotoForItem(name,categoryName);
+  const effectiveImage=imagePicked?selectedImage:suggestedPhoto;
+  const previewImage=imagePicked&&selectedImage.startsWith('data:')?selectedImage:
+    displayImagePath(imagePicked&&selectedImage?'/menu-tiles/'+selectedImage.split('/').pop():suggestedMenuImage(name,categoryName));
+  async function selectFile(file:File){try{setSelectedImage(await readProductImage(file));setImagePicked(true);}catch(e){showToast((e as Error).message);}}
 
-  const [selectedImage, setSelectedImage] = useState<string>(sampleImages[0].url);
-
-  async function selectFile(file:File){try{setSelectedImage(await readProductImage(file));}catch(e){showToast((e as Error).message);}}
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      showToast('لطفا نام غذا را وارد کنید');
+      showToast('لطفا نام آیتم را وارد کنید');
       return;
     }
     if(!categoryId){showToast('ابتدا از بخش دسته‌بندی‌های منو یک دسته اضافه کن');return;}
-    if (price <= 0) {
-      showToast('لطفا قیمت معتبر وارد کنید');
+    if (!Number.isFinite(price)||price < 0) {
+      showToast('قیمت باید صفر یا عدد مثبت باشد');
       return;
     }
 
@@ -47,13 +57,13 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
         description: description.trim() || 'تهیه شده از مواد اولیه تازه و باکیفیت روز',
         isAvailable: true,
         prepTimeMinutes: prepTimeMinutes || 15,
-        imageUrl: selectedImage,
+        imageUrl: effectiveImage,
         rating: 5.0,
       });
 
       // reset form
       setName('');
-      setDescription('');
+      setDescription('');setSelectedImage('');setImagePicked(false);
       onClose();
     } catch (err) {
       console.error(err);
@@ -73,7 +83,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
               <span className="material-symbols-outlined text-xl">restaurant</span>
             </div>
             <div>
-              <h3 id="add-dish-title" className="font-bold text-[#1C1917] text-base">افزودن غذای جدید به منو</h3>
+              <h3 id="add-dish-title" className="font-bold text-[#1C1917] text-base">افزودن آیتم جدید به منو</h3>
               <p className="text-xs text-[#7A6458]">ذخیره فوری در پایگاه داده و انتشار برای مشتریان</p>
             </div>
           </div>
@@ -88,7 +98,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
           <div>
-            <label className="block text-xs font-bold text-[#1C1917] mb-1">نام غذا یا نوشیدنی *</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">نام غذا، نوشیدنی یا خدمت *</label>
             <input 
               type="text" 
               required
@@ -117,7 +127,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
               <input 
                 type="number" 
                 required
-                step="5000"
+                step="1000" min="0"
                 value={price}
                 onChange={(e) => setPrice(Number(e.target.value))}
                 className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DFD3] rounded-xl text-sm focus:outline-none focus:border-[#9e2016] font-bold text-[#9e2016]"
@@ -149,25 +159,21 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
             </div>
           </div>
 
-          {/* Picture preset picker */}
+          {/* Curated image picker */}
           <div>
-            <label className="block text-xs font-bold text-[#1C1917] mb-1.5">انتخاب تصویر غذا:</label><label className="manager-upload">عکس مربع حداکثر ۱ مگابایت<input aria-label="عکس غذای جدید" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>e.target.files?.[0]&&selectFile(e.target.files[0])}/></label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {sampleImages.map((img, i) => (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => setSelectedImage(img.url)}
-                  className={`border-2 rounded-xl overflow-hidden relative group p-1 transition-all ${
-                    selectedImage === img.url ? 'border-[#9e2016] ring-2 ring-[#9e2016]/20' : 'border-[#E8DFD3]'
-                  }`}
-                >
-                  <img src={img.url} alt={img.label} className="w-full h-16 object-cover rounded-lg" />
-                  <div className="text-[10px] text-center font-bold text-stone-700 truncate mt-1">
-                    {img.label}
-                  </div>
-                </button>
-              ))}
+            <label className="block text-xs font-bold text-[#1C1917] mb-1.5">تصویر متناسب با آیتم:</label>
+            <p className="text-xs text-stone-600 mb-2">با نام آیتم عکس مرتبط پیشنهاد می‌شود. اگر عکس دقیق نداریم، یک تصویر خنثی نمایش داده می‌شود تا تصویر غذا اشتباه نباشد.</p>
+            <div className="flex items-center gap-3 mb-2">
+              <img src={previewImage} alt="پیش‌نمایش تصویر آیتم" className="w-20 h-20 rounded-xl border object-cover"/>
+              <button type="button" className="px-2 py-1 rounded-lg border text-xs" onClick={()=>{setImagePicked(false);setSelectedImage('');}}>تصویر خودکار</button>
+            </div>
+            <label className="manager-upload">عکس مربع حداکثر ۱ مگابایت<input aria-label="عکس آیتم" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>e.target.files?.[0]&&selectFile(e.target.files[0])}/></label>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto mt-2" aria-label="گالری تصاویر پیش‌فرض">
+              {sampleImages.map((img,i)=><button type="button" key={i} onClick={()=>{setSelectedImage(img.url);setImagePicked(true);}}
+                className={`border-2 rounded-xl overflow-hidden relative p-1 transition-all ${effectiveImage===img.url?'border-[#9e2016] ring-2 ring-[#9e2016]/20':'border-[#E8DFD3]'}`}>
+                <img src={displayImagePath(img.preview)} alt={img.label} loading="lazy" className="w-full aspect-square object-cover rounded-lg"/>
+                <div className="text-[10px] text-center font-bold text-stone-700 truncate mt-1">{img.label}</div>
+              </button>)}
             </div>
           </div>
 
