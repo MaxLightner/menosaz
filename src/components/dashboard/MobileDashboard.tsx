@@ -428,12 +428,12 @@ export const MobileDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
-                      <label className="inline-flex items-center cursor-pointer">
+                      <label className="inline-flex items-center cursor-pointer relative">
                         <input 
                           type="checkbox" 
                           aria-label={'موجودی '+prod.name} checked={prod.isAvailable} 
                           onChange={(e) => toggleProductAvailability(prod.id, e.target.checked)}
-                          className="sr-only peer"
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 peer z-10"
                         />
                         <div className="w-7 h-4 bg-stone-300 rounded-full peer peer-checked:bg-emerald-700 relative after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 peer-checked:after:-translate-x-3 transition-all"></div>
                       </label>
