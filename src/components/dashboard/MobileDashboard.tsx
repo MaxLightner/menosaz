@@ -1,3 +1,4 @@
+import {ProductPhotoButton} from '../common/ProductPhotoButton';
 import {ProductPriceEditor} from './ProductPriceEditor';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
@@ -429,30 +430,33 @@ export const MobileDashboard: React.FC = () => {
 
               <div className="space-y-2">{!products.length&&<p className="p-4 text-sm">این منو هنوز آیتم ندارد؛ اولین غذا یا نوشیدنی را اضافه کن.</p>}
                 {products.map(prod => (
-                  <div key={prod.id} className="p-3 bg-[#FFFFFF] border border-[#DBE2D5] rounded-xl flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <img onClick={()=>setEditingImage(prod)} src={localProductImage(prod)} alt={prod.name} className="w-11 h-11 object-cover rounded-lg shrink-0 border" />
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm text-[#29372E] whitespace-normal">{prod.name}</div>{menus.length>1&&<select aria-label={'انتقال به منوی دیگر: '+prod.name} value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value).catch(err=>showToast(err.message))}>{menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
-                        <div className="text-[11px] text-[#51805A] font-bold mt-0.5">
-                          {prod.price.toLocaleString('fa-IR')} تومان
-                        </div>
+                  <article key={prod.id} className="mizato-mobile-product-card">
+                    <div className="mizato-mobile-product-head">
+                      <ProductPhotoButton product={prod} onEdit={()=>setEditingImage(prod)} />
+                      <div className="mizato-mobile-product-title">
+                        <b>{prod.name}</b>
+                        {menus.length>1&&<select className="mizato-mobile-product-menu" aria-label={'انتقال به منوی دیگر: '+prod.name}
+                          value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value).catch(err=>showToast(err.message))}>
+                          {menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>}
                       </div>
+                      {!menus.some(m=>m.id===(prod.menuId||'main')&&m.name==='آرشیو آیتم‌های حذف‌شده')&&
+                        <button type="button" className="mizato-mobile-product-delete" title="انتقال به آرشیو خصوصی"
+                          disabled={archivingId===prod.id} aria-label={'حذف '+prod.name+' از منو'}
+                          onClick={()=>removeProductFromMenu(prod)}>{archivingId===prod.id?'…':'حذف'}</button>}
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>{!menus.some(m=>m.id===(prod.menuId||'main')&&m.name==='آرشیو آیتم‌های حذف‌شده')&&<button type="button" className="text-xs text-red-700 border border-red-200 rounded-lg px-2 py-1" title="انتقال به آرشیو خصوصی" disabled={archivingId===prod.id} aria-label={'حذف '+prod.name+' از منو'} onClick={()=>removeProductFromMenu(prod)}>{archivingId===prod.id?'در حال حذف…':'حذف'}</button>}
-                      <label className="inline-flex items-center cursor-pointer relative">
-                        <input 
-                          type="checkbox" 
-                          aria-label={'موجودی '+prod.name} checked={prod.isAvailable} 
-                          onChange={(e) => toggleProductAvailability(prod.id, e.target.checked)}
-                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 peer z-10"
-                        />
-                        <div className="w-7 h-4 bg-stone-300 rounded-full peer peer-checked:bg-emerald-700 relative after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 peer-checked:after:-translate-x-3 transition-all"></div>
+                    <div className="mizato-mobile-product-footer">
+                      <div className="mizato-mobile-product-price">
+                        <span>قیمت (تومان)</span>
+                        <ProductPriceEditor product={prod}/>
+                      </div>
+                      <label className="mizato-mobile-availability">
+                        <span>{prod.isAvailable?'موجود':'ناموجود'}</span>
+                        <input type="checkbox" aria-label={'موجودی '+prod.name} checked={prod.isAvailable}
+                          onChange={e=>toggleProductAvailability(prod.id,e.target.checked)}/>
                       </label>
-                      <ProductPriceEditor product={prod}/>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             </div>
