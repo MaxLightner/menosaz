@@ -37,11 +37,17 @@ jobs:
           pnpm run test:notifications
           pnpm run test:billing
           pnpm run test:customer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow for optimized menu thumbnails
+        run: python -m pip install --disable-pip-version-check Pillow==11.3.0
       - name: Build public site
         env:
           VITE_PUBLIC_URL: ${{ vars.PUBLIC_SITE_URL || 'https://maxlightner.github.io/menosaz' }}
         run: |
           pnpm run build
+          python scripts/build-menu-tiles.py
           node scripts/fix-pages-paths.mjs
       - uses: actions/configure-pages@v5
         with:
