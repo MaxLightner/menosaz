@@ -37,6 +37,7 @@ jobs:
           pnpm run test:notifications
           pnpm run test:billing
           pnpm run test:customer
+          pnpm exec tsx scripts/test-menu-library.ts
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
