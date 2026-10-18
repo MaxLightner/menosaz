@@ -83,8 +83,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   function setActiveMenuId(id:string){setMenuId(id); }
   async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',commandBody({name:clean,kind},pendingMenu));pendingMenu.current=null;setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
   async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
-  const [currentView, setCurrentView] = useState<AppView>(()=>viewFromSearch(window.location.search));
-  useEffect(()=>{const onSitePop=()=>setCurrentView(viewFromSearch(window.location.search));window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
+  const [currentView,setCurrentViewState]=useState<AppView>(()=>viewFromSearch(window.location.search));
+  function setCurrentView(view:AppView){
+    setCurrentViewState(view);
+    const url=new URL(window.location.href);
+    if(viewFromSearch(url.search)===view)return;
+    url.searchParams.delete('q');
+    url.searchParams.set('view',view);
+    if(view!=='customer'){
+      url.searchParams.delete('table');
+      url.searchParams.delete('business');
+    }
+    window.history.pushState({mizatoView:view},'',url.pathname+url.search+url.hash);
+  }
+  useEffect(()=>{
+    const onSitePop=()=>setCurrentViewState(viewFromSearch(window.location.search));
+    window.addEventListener('popstate',onSitePop);
+    return()=>window.removeEventListener('popstate',onSitePop);
+  },[]);
   const [selectedTableNumber, setSelectedTableNumber] = useState<number>(() => {
     const table = Number(new URLSearchParams(window.location.search).get('table'));
     return Number.isInteger(table) && table > 0 ? table : 4;
