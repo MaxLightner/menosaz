@@ -7,7 +7,7 @@ export async function runPlatformTests(db,users){
  const bill=async(op,body={},uid=users[0])=>(await db.query('select menu_billing($1,$2,$3) r',[op,uid,body])).rows[0].r;
  const old=(await db.query("insert into menu_payments(user_id,business_id,plan,amount,request_id,status,authority,ref_id) values($1,'pich-shemroon','growth',2000000,$2,'paid','S98765432101234567890','original-ref') returning id",[users[0],crypto.randomUUID()])).rows[0].id;
  const before=(await db.query('select count(*)::int n,sum(total_toman)::text total from orders')).rows[0];
- for(const name of ['202610150008_platform.sql','202610150009_runtime_cleanup.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')));
+ for(const name of ['202610150008_platform.sql','202610150009_runtime_cleanup.sql','202610190001_product_archive.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')));
  const legacy=(await db.query('select amount_toman,gateway_amount_rial,ref_id,status from platform_payments where id=$1',[old])).rows[0];assert.deepEqual(legacy,{amount_toman:200000,gateway_amount_rial:2000000,ref_id:'original-ref',status:'paid'});check();
  assert.deepEqual((await db.query('select count(*)::int n,sum(total_toman)::text total from orders')).rows[0],before);check();
  assert.equal((await ok('/health','GET',{},null)).runtimeVersion,2);check();
@@ -51,5 +51,11 @@ export async function runPlatformTests(db,users){
  assert.equal((await ok('/subscription','GET',{},uid)).productLimit,20);check();
  const qr=new URL(workspace.servicePoints[0].qrCodeUrl).searchParams.get('q');assert.equal((await ok('/public/resolve','GET',{q:qr},null)).business.id,reg.account.businessId);check();
  for(const table of ['platform_content','platform_payments','message_receipts','presence']){assert.equal((await db.query('select has_table_privilege(\'anon\',$1,\'select\') r',[table])).rows[0].r,false);check();}
+ const current=(await ok('/workspace')).products[0];assert.ok(current);const existingOrders=await nOrders();
+ async function nOrders(){return (await db.query('select count(*)::int n from orders')).rows[0].n;}
+ assert.notEqual((await call('/products/'+current.id,'DELETE',{expectedVersion:current.version},users[1])).status,200);check();
+ assert.equal((await call('/products/'+current.id,'DELETE',{expectedVersion:current.version+100})).status,409);check();
+ await ok('/products/'+current.id,'DELETE',{expectedVersion:current.version});assert.ok(!(await ok('/workspace')).products.some(p=>p.id===current.id));assert.equal(await nOrders(),existingOrders);check();
+ await ok('/products/'+current.id+'/restore','POST',{});assert.ok((await ok('/workspace')).products.some(p=>p.id===current.id));check();
  console.log(`PASS: ${checks} platform migration/payment/content/receipt/runtime checks`);
 }

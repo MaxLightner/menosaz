@@ -1,3 +1,4 @@
+import {UndoProduct} from './components/dashboard/UndoProduct';
 import {BrandLogo} from './components/common/BrandLogo';
 import {NotificationControl} from './components/common/NotificationControl';
 import {SessionReport} from './components/dashboard/SessionReport';
@@ -42,7 +43,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen flex flex-col font-sans relative">
       {/* Test Environment & Role Switcher Bar */}
 
-      {restored&&currentView!=='customer'&&account&&<nav className="manager-utility" aria-label="حساب کارکنان"><BrandLogo compact/><NotificationControl/><span>{account.businessRole==='waiter'?'گارسون':account.businessRole==='kitchen'?'آشپزخانه':'حساب مجموعه'}</span>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}<button onClick={()=>logout()}>خروج از حساب</button></nav>}
+      {restored&&currentView!=='customer'&&account&&<nav className="manager-utility" aria-label="حساب کارکنان"><BrandLogo compact/><NotificationControl/>{canManage&&<button onClick={()=>setCurrentView(accountView(account))}>بازگشت به مدیریت</button>}<span>{account.businessRole==='waiter'?'گارسون':account.businessRole==='kitchen'?'آشپزخانه':'حساب مجموعه'}</span>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}<button onClick={()=>logout()}>خروج از حساب</button></nav>}
       {/* Main Viewport */}
       <div className={manager?"flex-1 manager-shell":"flex-1"}>{manager&&account&&canManage&&<div className="manager-utility"><BrandLogo compact/><span>حساب مجموعه</span><button onClick={()=>setSessionsOpen(true)}>زمان حضور و تخلیه{servicePoints.filter(p=>p.activeSession&&p.activeSession.durationSeconds>=3600).length>0?' · نشست طولانی':''}</button>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}{account.businessRole==='owner'&&<button onClick={()=>setTeamOpen(true)}>دسترسی کارکنان</button>}<button className="manager-subscription-button" onClick={()=>setCurrentView('membership')}><span className="material-symbols-outlined">workspace_premium</span> اشتراک</button><button onClick={()=>setInboxOpen(true)}>پیام‌های پشتیبانی</button><button onClick={()=>setAppearanceOpen(true)}>رنگ و پس‌زمینه منو</button><button onClick={()=>setCurrentView('website')}>صفحه اول سایت</button><button onClick={()=>logout()}>خروج از حساب</button></div>}
         {currentView==='membership'&&(account?<Membership/>:<WebsiteView/>)}
@@ -64,6 +65,7 @@ const AppContent: React.FC = () => {
       {teamOpen&&account?.businessRole==='owner'&&<OrderDialog title="دسترسی کارکنان" onClose={()=>setTeamOpen(false)}><TeamAccess key={account.businessId}/></OrderDialog>}
       {appearanceOpen&&account&&<OrderDialog title="ظاهر منوی مشتری" onClose={()=>setAppearanceOpen(false)}><MenuAppearance onPreview={()=>setAppearanceOpen(false)} /></OrderDialog>}
       {manager&&account&&canManage&&!account.needsProfile&&isServerConnected&&!hasAnyProducts&&<MenuSetupWizard/>}
+      <UndoProduct/>
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#1C1917]/95 text-white px-4 py-3 rounded-2xl shadow-2xl border border-amber-600/60 backdrop-blur-md flex items-center gap-2.5 text-base font-bold">

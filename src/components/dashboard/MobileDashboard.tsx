@@ -1,3 +1,5 @@
+import {RemoveProduct} from './RemoveProduct';
+import {PointsPanel} from './PointsPanel';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
@@ -395,45 +397,7 @@ export const MobileDashboard: React.FC = () => {
           )}
 
           {/* TAB 3: TABLES */}
-          {activeTab === 'tables' && (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <h2 className="font-bold text-sm text-[#29372E]">چیدمان و QR کد میزها</h2>
-                <button 
-                  onClick={() => { setSelectedQrTable(4); setIsQrModalOpen(true); }}
-                  className="px-2.5 py-1 bg-[#51805A] text-white rounded text-xs font-bold"
-                >
-                  دریافت QR کدها
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {servicePoints.map(sp => (
-                  <div key={sp.id} className="p-2.5 bg-[#FFFFFF] border border-[#DBE2D5] rounded-xl text-center space-y-1">
-                    <div className="font-bold text-xs text-[#29372E]">{sp.label}</div>
-                    <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      sp.isOccupied ? 'bg-orange-100 text-[#D35400]' : 'bg-emerald-100 text-emerald-800'
-                    }`}>
-                      {sp.isOccupied ? 'مشغول' : 'خالی'}
-                    </span>
-                    <div className="pt-1 flex gap-1">
-                      <button 
-                        onClick={() => { setSelectedQrTable(sp.tableNumber); setIsQrModalOpen(true); }}
-                        className="flex-1 py-1 bg-[#EEF2E8] text-[10px] rounded font-bold"
-                      >
-                        نمایش QR
-                      </button>
-                      <button 
-                        onClick={() => { setSelectedTableNumber(sp.tableNumber); openSample(null); }}
-                        className="flex-1 py-1 bg-[#51805A] text-white text-[10px] rounded font-bold"
-                      >
-                        ورود
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {activeTab === 'tables' && <PointsPanel/>}
 
           {/* TAB 4: MENU & PRICING */}
           {activeTab === 'menu' && (
@@ -462,7 +426,7 @@ export const MobileDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
+                    <div className="flex items-center gap-2 shrink-0"><RemoveProduct product={prod}/><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
                       <label className="inline-flex items-center cursor-pointer">
                         <input 
                           type="checkbox" 
@@ -593,6 +557,7 @@ export const MobileDashboard: React.FC = () => {
         {/* QR Modal */}
         <AllQRAccessModal 
           isOpen={isQrModalOpen}
+          initialTable={selectedQrTable}
           onClose={() => setIsQrModalOpen(false)}
         />
 

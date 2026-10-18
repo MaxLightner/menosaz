@@ -30,6 +30,7 @@ interface CartItem {
 }
 
 interface AppContextType {
+  syncError:string;lastSyncedAt:number|null;refreshWorkspace:()=>void;
   menuMessage:string;guestSessionClosed:boolean;startNewGuestSession:()=>void;
   categories:Category[];
   hasAnyProducts:boolean;
@@ -88,11 +89,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   function setActiveMenuId(id:string){setMenuId(id); }
   async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',commandBody({name:clean,kind},pendingMenu));pendingMenu.current=null;setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
   async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
-  const [currentView, setCurrentView] = useState<AppView>(() => {
+  const [currentView, setViewState] = useState<AppView>(() => {
     const view = new URLSearchParams(window.location.search).get('q')?'customer':new URLSearchParams(window.location.search).get('view') as AppView;
     return ['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(view) ? view : 'website';
   });
-  useEffect(()=>{const onSitePop=()=>{const v=new URLSearchParams(window.location.search).get('view') as AppView;if(['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(v))setCurrentView(v);};window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
+  const setCurrentView=useCallback((view:AppView)=>{const url=new URL(location.href);const old=url.searchParams.has('q')?'customer':url.searchParams.get('view')||'website';if(old!==view){history.replaceState({...history.state,scrollY:window.scrollY},'',location.href);url.searchParams.set('view',view);url.hash='';if(view!=='customer'){url.searchParams.delete('q');url.searchParams.delete('preview');}history.pushState({scrollY:0},'',url);window.scrollTo({top:0,behavior:'instant'});}setViewState(view);},[]);
+  useEffect(()=>{const onSitePop=(event:PopStateEvent)=>{const params=new URLSearchParams(location.search),v=(params.has('q')?'customer':params.get('view')||'website') as AppView;if(['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(v)){setViewState(v);requestAnimationFrame(()=>window.scrollTo({top:event.state?.scrollY||0,behavior:'instant'}));}};window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
   const [selectedTableNumber, setSelectedTableNumber] = useState<number>(() => {
     const table = Number(new URLSearchParams(window.location.search).get('table'));
     return Number.isInteger(table) && table > 0 ? table : 4;
@@ -100,6 +102,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isNetworkOnline, setIsNetworkOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isServerConnected, setIsServerConnected] = useState<boolean>(false);
+  const [syncError,setSyncError]=useState(''),[lastSyncedAt,setLastSyncedAt]=useState<number|null>(null);
+  const refreshWorkspace=useCallback(()=>window.dispatchEvent(new Event('workspace-auth')),[]);
   const [menuMessage,setMenuMessage]=useState(''),[guestSessionClosed,setGuestSessionClosed]=useState(false);
   const workspaceGeneration=useRef(0);
   const alertSnapshots=useRef(new Map<string,AlertSnapshot>());
@@ -161,25 +165,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const params=new URLSearchParams(window.location.search);
       const fromPoint=currentView==='customer';
       const data=await api(publicView?(fromPoint?'/public/resolve?'+new URLSearchParams({...(params.get('q')?{q:params.get('q')!}:{business:b,table:String(selectedTableNumber)}),tab:activeMenuId}).toString():'/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId)):'/workspace');
-      if(data.activeMenuId&&data.activeMenuId!==activeMenuId)setMenuId(data.activeMenuId);
-      if(data.servicePoint?.tableNumber&&data.servicePoint.tableNumber!==selectedTableNumber)setSelectedTableNumber(data.servicePoint.tableNumber);
       if(publicView&&currentView==='customer'){
         let guest=data.servicePoint?savedGuestSession(data.business.id,data.servicePoint.id):null;
-        const scanned=params.has('q')||(params.get('view')==='customer'&&params.has('business')&&params.has('table'));
+        const scanned=params.has('q')||(params.get('view')==='customer'&&!params.has('preview')&&params.has('business')&&params.has('table'));
         if(scanned&&data.servicePoint&&!guest?.sessionId){try{guest=await ensureGuestSession(data.business.id,data.servicePoint.id,data.servicePoint.tableNumber);}catch(error){if((error as any).code==='SESSION_CLOSED')data.closed=true;else throw error;}}
         if(guest?.sessionId){try{const status=await api('/sessions/status',guest);data.orders=status.orders;data.notices=status.notices;data.closed=status.status==='closed';}catch(error){if((error as any).code==='SESSION_INVALID')data.closed=true;else throw error;}}else{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}
       }
       if(stopped||request!==revision||generation!==workspaceGeneration.current)return;
+      if(data.activeMenuId&&data.activeMenuId!==activeMenuId)setMenuId(data.activeMenuId);
+      if(data.servicePoint?.tableNumber&&data.servicePoint.tableNumber!==selectedTableNumber)setSelectedTableNumber(data.servicePoint.tableNumber);
       setMenuMessage(data.message||'');setGuestSessionClosed(data.closed===true);
       const alertScope=currentView+':'+data.business.id+':'+(data.servicePoint?.id||'');
       for(const alert of orderAlerts(currentView,alertSnapshots.current.get(alertScope)||null,data))incomingNotice(alert.id,alert.message);
       alertSnapshots.current.set(alertScope,{orders:data.orders,serviceCalls:data.serviceCalls,servicePoints:data.servicePoints,notices:data.notices});
       setBusiness(data.business);setProducts(data.products);setMenus(data.menus);setCategories(data.categories||[]);
-      setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsServerConnected(true);
+      setOrders(data.orders||[]);setServicePoints(data.servicePoints||[]);setServiceCalls(data.serviceCalls||[]);setIsServerConnected(true);setSyncError('');setLastSyncedAt(Date.now());
       if(!publicView&&data.menus?.length&&!data.menus.some((m:MenuDefinition)=>m.id===activeMenuId))setMenuId(data.menus[0].id);
-    }catch(error){if(!stopped&&request===revision){setIsServerConnected(false);if(currentView==='customer'){setMenuMessage((error as Error).message);setProducts([]);setMenus([]);setCategories([]);}if((error as any).status===401||(error as any).status===403){setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);}}}finally{fetching=false;}}
-    sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);
-    return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);};
+    }catch(error){if(!stopped&&request===revision&&generation===workspaceGeneration.current){setIsServerConnected(false);setSyncError((error as Error).message||'ارتباط با سرور قطع شد');if(currentView==='customer'){setMenuMessage((error as Error).message);}if((error as any).status===401||(error as any).status===403){setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);}}}finally{fetching=false;}}
+    const visible=()=>{if(document.visibilityState==='visible')sync();};
+    sync();const t=setInterval(sync,2500);window.addEventListener('workspace-auth',sync);window.addEventListener('online',sync);window.addEventListener('focus',sync);document.addEventListener('visibilitychange',visible);
+    return()=>{stopped=true;clearInterval(t);window.removeEventListener('workspace-auth',sync);window.removeEventListener('online',sync);window.removeEventListener('focus',sync);document.removeEventListener('visibilitychange',visible);};
   },[activeMenuId,currentView,selectedTableNumber]);
   useEffect(()=>{if(!BACKEND)return;const clear=()=>{workspaceGeneration.current++;alertSnapshots.current.clear();setOrders([]);setProducts([]);setMenus([]);setCategories([]);setServicePoints([]);setServiceCalls([]);setCart([]);setIsServerConnected(false);for(const key of ['orders','products','business','servicePoints','serviceCalls'])localStorage.removeItem('menuyar_state_v1_'+key);};window.addEventListener('workspace-clear',clear);return()=>window.removeEventListener('workspace-clear',clear);},[]);
   const pendingGuest=useRef<{signature:string;token:string;key:string}|null>(null);
@@ -226,7 +231,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
     type: 'waiter' | 'bill' | 'napkin' | 'custom',
     message?: string
   ): Promise<string> => {
-    const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw Error('سرویس‌پوینت پیدا نشد');const guest=await ensureGuestSession(business.id,point.id,tableNumber);const call=await api<ServiceCall>('/calls',{...guest,type:type==='bill'?'cashier':type==='napkin'?'utensils':type,message});setServiceCalls(prev=>[call,...prev]);return call.id;
+    const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw Error('سرویس‌پوینت پیدا نشد');const guest=await ensureGuestSession(business.id,point.id,tableNumber);const call=await api<ServiceCall>('/calls',{...guest,type:type==='bill'?'cashier':type==='napkin'?'utensils':type,message});setServiceCalls(prev=>prev.some(c=>c.id===call.id)?prev:[call,...prev]);showToast('درخواستت برای گارسون ثبت شد');return call.id;
   };
   const resolveServiceCall = async (callId: string) => {
     const c=await api<ServiceCall>('/calls/'+callId,{},'PATCH');setServiceCalls(prev=>prev.map(v=>v.id===callId?c:v));return;
@@ -307,6 +312,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
   return (
     <AppContext.Provider
       value={{
+        syncError,lastSyncedAt,refreshWorkspace,
         categories:categories.filter(c=>!c.menuId||c.menuId===activeMenuId),
         submitToKitchen,confirmKitchen,markDelivered,removeOrderItem,setItemWaiterNote,setCartNotes,
         currentView,

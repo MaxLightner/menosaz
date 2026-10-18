@@ -24,6 +24,7 @@ export async function runOrderTests(db,users,oldOrder,legacyToken){
  assert.equal((await call('/orders','POST',{...body,idempotencyKey:crypto.randomUUID(),items:[...body.items,{productId:'foreign',quantity:1}]},null)).status,400);assert.equal(await n('select count(*)::int n from orders'),before);check();
  await ok('/access/members','POST',{phone:'09140000000',role:'waiter',status:'active'});
  const waiter='00000000-0000-4000-a000-000000000004',kitchen='00000000-0000-4000-a000-000000000005';
+ const receivedByWaiter=(await ok('/workspace','GET',{},waiter)).orders.find(o=>o.id===created.id);assert.ok(receivedByWaiter);assert.equal(receivedByWaiter.status,'pending_waiter');assert.equal(receivedByWaiter.items[0].notes,created.items[0].notes);check();
  const act=async(action,version=1,key=crypto.randomUUID(),uid=waiter,extra={})=>call('/orders/'+created.id+'/action','POST',{action,expectedVersion:version,idempotencyKey:key,...extra},uid);
  assert.equal((await act('deliver')).status,400);check();
  assert.equal((await act('confirm',1,crypto.randomUUID(),waiter)).status,403);check();
