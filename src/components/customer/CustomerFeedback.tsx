@@ -14,7 +14,9 @@ export function CustomerFeedback({order,businessId,points,onSubmitted}:{order:Or
   if(!guest?.guestToken||!guest.sessionId){setError('نشست سفارش در این مرورگر موجود نیست؛ از همان گوشی سفارش‌دهنده استفاده کنید.');return;}
   if(!food||!service||(!anonymous&&!valid(ascii(phone)))){setError('امتیازها و شماره معتبر یا گزینه نظر ناشناس لازم است.');return;}
   setBusy(true);
-  try{await api('/feedback/submit',{businessId,orderId:order.id,sessionId:guest.sessionId,guestToken:guest.guestToken,foodRating:food,serviceRating:service,comment,anonymous,phone:anonymous?undefined:ascii(phone),marketingConsent:!anonymous&&marketingConsent});onSubmitted();}
+  try{const response=await api<{ok:boolean;unsubscribeToken?:string}>('/feedback/submit',{businessId,orderId:order.id,sessionId:guest.sessionId,guestToken:guest.guestToken,foodRating:food,serviceRating:service,comment,anonymous,phone:anonymous?undefined:ascii(phone),marketingConsent:!anonymous&&marketingConsent});
+   if(response.unsubscribeToken)try{localStorage.setItem('mizato-club-optout:'+businessId,response.unsubscribeToken);}catch{}
+   onSubmitted();}
   catch(err){setError((err as Error).message);}
   finally{setBusy(false);}
  }
