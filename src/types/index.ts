@@ -112,6 +112,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  deliveredBy?:string|null;
   version?:number;
   menuId?:string;
   restaurantConfirmed?:boolean;
