@@ -130,7 +130,7 @@ begin
   if length(coalesce(p_body->>'start',''))>0 and coalesce(p_body->>'start','') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then raise exception 'ساعت شروع معتبر نیست';end if;
   if length(coalesce(p_body->>'end',''))>0 and coalesce(p_body->>'end','') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then raise exception 'ساعت پایان معتبر نیست';end if;
   if (p_body->>'status') not in ('active','disabled') then raise exception 'وضعیت گارسون معتبر نیست';end if;
-  if (p_body->>'start') is null <> ((p_body->>'end') is null) then raise exception 'ساعت شروع و پایان باید هر دو وارد شوند';end if;
+  if ((nullif(p_body->>'start','') is null) <> (nullif(p_body->>'end','') is null)) then raise exception 'ساعت شروع و پایان باید هر دو وارد شوند';end if;
   insert into mizato_staff(business_id,phone,name,role,status,shift_days,shift_start,shift_end,approved_by)
   values(bid,phone,trim(p_body->>'name'),'waiter',p_body->>'status',
    coalesce((select array_agg(distinct d::int order by d::int) from jsonb_array_elements_text(coalesce(p_body->'days','[]')) d where d::int between 1 and 7),'{}'::int[]),
@@ -274,6 +274,19 @@ begin
  else return jsonb_build_object('status',404,'data',jsonb_build_object('error','مسیر بازخورد معتبر نیست'));end if;
  return jsonb_build_object('status',200,'data',data);
 end $$;
+
+-- Expose the first name of the waiter who actually delivered a given order to its guest.
+-- Keep other staff details private.
+do $order_view$
+declare source text;replacement text;
+begin
+ select pg_get_functiondef('public.order_dto(text,text)'::regprocedure) into source;
+ if source is not null and position('''orderNumber'',o.number,' in source)>0 then
+  replacement='''orderNumber'',o.number,''deliveredBy'',(select split_part(s.name,'' '',1) from order_events ev join mizato_staff s on s.business_id=ev.business_id and s.user_id::text=ev.actor_id where ev.business_id=o.business_id and ev.order_id=o.id and ev.action=''deliver'' order by ev.created_at desc limit 1),';
+  source=replace(source,'''orderNumber'',o.number,',replacement);
+  execute source;
+ end if;
+end $order_view$;
 
 -- Unsubscription uses an unguessable token, not a publicly writable phone field.
 create function public.mizato_club_unsubscribe(p_token uuid) returns jsonb
