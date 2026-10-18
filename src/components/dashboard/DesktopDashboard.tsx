@@ -23,6 +23,7 @@ export const DesktopDashboard: React.FC = () => {
     setCurrentView, 
     setSelectedTableNumber,
     isNetworkOnline,
+    isServerConnected,
     showToast
   } = useApp();
   const {openSample}=usePresentation();
@@ -265,8 +266,8 @@ export const DesktopDashboard: React.FC = () => {
             </div>
 
             <div className="hidden lg:flex items-center text-[#506354] text-xs gap-1.5 border-r border-[#DBE2D5] pr-3">
-              <span className="material-symbols-outlined text-[16px] text-emerald-600">cloud_done</span>
-              <span>اتصال بلادرنگ Firebase برقرار است</span>
+              <span className={"material-symbols-outlined text-[16px] "+(isServerConnected?"text-emerald-600":"text-amber-600")}>{isServerConnected?'cloud_done':'cloud_off'}</span>
+              <span>{isServerConnected?'ارتباط با سرور برقرار است':'در انتظار اتصال به سرور'}</span>
             </div>
           </div>
 
