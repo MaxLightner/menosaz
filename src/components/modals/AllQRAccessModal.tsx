@@ -37,7 +37,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   const baseUrl = (import.meta.env.VITE_PUBLIC_URL||window.location.origin).replace(/\/$/,'');
   const point = servicePoints.find(p=>p.tableNumber===selectedTable);
   const currentTableUrl = point?.qrCodeUrl||`${baseUrl}/?view=customer&business=${business.id}&table=${selectedTable}`;
-  const currentWaiterUrl = `${baseUrl}/?view=waiter`;
+  const currentWaiterUrl = `${baseUrl}/?view=waiter&business=${encodeURIComponent(business.id)}`;
   const currentKitchenUrl = `${baseUrl}/?view=kitchen`;
 
   useEffect(() => {
