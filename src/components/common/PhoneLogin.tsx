@@ -4,15 +4,16 @@ import {usePresentation} from '../../context/PresentationContext';
 import {api,ApiError} from '../../services/backend';
 const KEY='menosaz-auth-pending';
 const digits=(value:string)=>value.replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c)));
-function cached(){try{const value=JSON.parse(sessionStorage.getItem(KEY)||'null');return value&&value.expiresAt>Date.now()?value:null;}catch{return null;}}
+function cached(key=KEY){try{const value=JSON.parse(sessionStorage.getItem(key)||'null');return value&&value.expiresAt>Date.now()?value:null;}catch{return null;}}
 const fa=new Intl.NumberFormat('fa-IR',{minimumIntegerDigits:2});
 function clock(seconds:number){return fa.format(Math.floor(seconds/60))+':'+fa.format(seconds%60);}
 export function PhoneLogin({onDone,staffBusinessId}:{onDone:()=>void;staffBusinessId?:string}){
  const {verifyPhone}=usePresentation();
- const [initial]=useState(cached),[phone,setPhone]=useState(initial?.phone||''),[remember,setRemember]=useState(initial?.remember!==false),[code,setCode]=useState(''),[pending,setPending]=useState<any>(initial),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const cacheKey=staffBusinessId?'menosaz-auth-pending:staff:'+staffBusinessId:KEY;
+ const [initial]=useState(()=>cached(cacheKey)),[phone,setPhone]=useState(initial?.phone||''),[remember,setRemember]=useState(initial?.remember!==false),[code,setCode]=useState(''),[pending,setPending]=useState<any>(initial),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const wait=Math.max(0,Math.ceil(((pending?.nextSendAt||0)-now)/1000)),expired=!!pending?.challenge&&pending.expiresAt<=now;
  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),500);return()=>clearInterval(timer);},[]);
- function keep(value:any){setPending(value);try{value?sessionStorage.setItem(KEY,JSON.stringify(value)):sessionStorage.removeItem(KEY);}catch{}}
+ function keep(value:any){setPending(value);try{value?sessionStorage.setItem(cacheKey,JSON.stringify(value)):sessionStorage.removeItem(cacheKey);}catch{}}
  async function send(){if(busy||wait)return;const normalized=digits(phone).replace(/\D/g,'');if(!/^09\d{9}$/.test(normalized)){setError('شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');return;}setBusy(true);setError('');try{
   if(staffBusinessId){const eligibility=await api<{allowed:boolean;error?:string}>('/staff/check',{businessId:staffBusinessId,phone:normalized});if(!eligibility.allowed)throw Error(eligibility.error||'شماره شما در فهرست گارسون‌های این رستوران ثبت نشده است');}
   const data=await api('/auth/request',{phone:normalized,...(staffBusinessId?{staffBusinessId}:{})});const sentAt=Date.now();const delay=typeof data.resendAt==='number'&&typeof data.serverNow==='number'?Math.max(0,data.resendAt-data.serverNow):(data.resendIn||60)*1000;
