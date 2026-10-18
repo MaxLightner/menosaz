@@ -23,11 +23,16 @@ cart=addCartItem([],product,[a,b]);cart=addCartItem(cart,product,[b,a]);assert.e
 cart=addCartItem([],product,[{...a,groupId:undefined,optionId:undefined,groupTitle:'نان'}]);cart=addCartItem(cart,product,[{...a,groupId:undefined,optionId:undefined,groupTitle:'نوشیدنی'}]);assert.equal(cart.length,2);checks++;
 cart=addCartItem([],product);cart=addCartItem(cart,{...product,price:200});assert.equal(cart.length,2);assert.equal(cart.reduce((n,i)=>n+i.itemTotal,0),300);checks++;
 assert.equal(viewFromSearch(''),'website');assert.equal(viewFromSearch('?view=how'),'how');assert.equal(viewFromSearch('?view=terms'),'terms');assert.equal(viewFromSearch('?q=table-token'),'customer');assert.equal(viewFromSearch('?view=unknown'),'website');checks++;
-assert.equal(localProductImage(product),product.imageUrl);assert.equal(localProductImage({...product,customImage:true,imageUrl:'https://example.com/photo.webp'}),'https://example.com/photo.webp');assert.equal(localProductImage({...product,imageUrl:''}),'/media/food-0.webp');checks++;
+// Inaccurate bundled placeholder photos are replaced by item-matching lightweight tiles.
+assert.equal(localProductImage(product),'/menu-tiles/food-15.webp');
+assert.equal(localProductImage({...product,customImage:true,imageUrl:'https://example.com/photo.webp'}),'https://example.com/photo.webp');
+assert.equal(localProductImage({...product,imageUrl:''}),'/menu-tiles/food-15.webp');checks++;
 assert.equal(customerOrderStatus({status:'cancelled',deliveryStatus:'pending'}),'لغو شد');
 assert.equal(customerOrderStatus({status:'delivered',deliveryStatus:'delivered'}),'تحویل داده شد');
 assert.equal(customerOrderStatus({status:'pending_waiter',deliveryStatus:'pending'}),'در انتظار گارسون');
 assert.equal(customerOrderStatus({status:'ready',deliveryStatus:'pending'}),'رستوران تأیید کرد');
 assert.equal(customerOrderStatus({status:'cooking',deliveryStatus:'pending'}),'برای رستوران ارسال شد');checks++;
+assert.equal(displayImagePath('/menu-tiles/food-0.webp','/menosaz/'),'/menosaz/menu-tiles/food-0.webp');
+assert.equal(displayImagePath('/menu-tiles/service.svg','/menosaz/'),'/menosaz/menu-tiles/service.svg');
 assert.equal(displayImagePath('/menu-assets/cappuccino.webp','/menosaz/'),'/menosaz/menu-assets/cappuccino.webp');assert.equal(displayImagePath('/menosaz/media/food-0.webp','/menosaz/'),'/menosaz/media/food-0.webp');assert.equal(catalogImagePath('/menosaz/media/food-0.webp','/menosaz/'),'/media/food-0.webp');assert.equal(displayImagePath('https://example.com/photo.webp','/menosaz/'),'https://example.com/photo.webp');checks++;
 console.log(`PASS: ${checks} customer cart/instructions/options/pricing/navigation/images/status regression scenarios`);
