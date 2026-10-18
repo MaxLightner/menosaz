@@ -5,7 +5,9 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: process.env.GITHUB_ACTIONS ? '/menosaz/' : '/',
+    base: process.env.VITE_PUBLIC_URL
+      ? new URL(process.env.VITE_PUBLIC_URL).pathname.replace(/\/?$/, '/')
+      : process.env.GITHUB_ACTIONS ? '/menosaz/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

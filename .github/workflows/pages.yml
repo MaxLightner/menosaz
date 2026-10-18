@@ -38,7 +38,7 @@ jobs:
           pnpm run test:billing
       - name: Build public site
         env:
-          VITE_PUBLIC_URL: https://maxlightner.github.io/menosaz
+          VITE_PUBLIC_URL: ${{ vars.PUBLIC_SITE_URL || 'https://maxlightner.github.io/menosaz' }}
         run: |
           pnpm run build
           node scripts/fix-pages-paths.mjs

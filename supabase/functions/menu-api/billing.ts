@@ -1,6 +1,10 @@
 // @ts-nocheck
 const MERCHANT='24810652-1c44-4df8-9761-072685063809';
-const SITE='https://maxlightner.github.io/menosaz';
+export function publicSiteUrl(){
+ const site=String((globalThis as any).Deno?.env?.get('PUBLIC_SITE_URL')||'https://maxlightner.github.io/menosaz').replace(/\/$/,'');
+ if(!['https://maxlightner.github.io/menosaz','https://mizato.ir','https://www.mizato.ir'].includes(site))throw Error('PUBLIC_SITE_URL is not an approved deployment URL');
+ return site;
+}
 export async function sandboxGateway(method,body){
  const r=await fetch('https://sandbox.zarinpal.com/pg/v4/payment/'+method+'.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({merchant_id:MERCHANT,...body}),signal:AbortSignal.timeout(20000)});
  const data=await r.json();if(!r.ok||!data.data||![100,101].includes(data.data.code))throw Object.assign(Error('درگاه آزمایشی پاسخ موفق نداد؛ دوباره تلاش کن'),{status:502});return data.data;
@@ -12,7 +16,7 @@ export async function billingRequest(db,uid,path,body,gateway=sandboxGateway){
   if(payment.status==='paid')return {paid:true,id:payment.id,sandbox:true};
   if(payment.status!=='pending')throw Object.assign(Error('این پرداخت بسته شده است؛ دوباره انتخاب کن'),{status:409});
   if(!payment.authority){
-   const data=await gateway('request',{amount:payment.amount,callback_url:SITE+'/?view=checkout&payment='+payment.id,description:'آزمایش اشتراک منوساز؛ '+payment.plan});
+   const data=await gateway('request',{amount:payment.amount,callback_url:publicSiteUrl()+'/?view=checkout&payment='+payment.id,description:'آزمایش اشتراک منوساز؛ '+payment.plan});
    if(!/^S[0-9A-Za-z]{10,100}$/.test(data.authority))throw Object.assign(Error('پاسخ درگاه آزمایشی معتبر نیست'),{status:502});
    payment=await rpc('attach',{id:payment.id,authority:data.authority});
   }
