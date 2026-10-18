@@ -58,7 +58,7 @@ const AppContent: React.FC = () => {
         {currentView === 'dashboard-mobile' && (account&&canManage?(<MobileDashboard />):<WebsiteView />)}
         {currentView === 'customer' && <CustomerApp />}
         {currentView === 'waiter' && (account?.businessRole==='waiter'&&(!staffBusinessId||account.businessId===staffBusinessId)?<WaiterApp />:account?<section className="staff-entry-screen"><h2>ورود گارسون</h2><p>برای ورود به پنل گارسون همین مجموعه، ابتدا از حساب فعلی خارج شوید.</p><button className="staff-primary" onClick={()=>logout()}>خروج و ورود با شماره گارسون</button></section>:<section className="staff-entry-screen"><h2>ورود گارسون به رستوران</h2>{staffBusinessId?<PhoneLogin staffBusinessId={staffBusinessId} onDone={()=>{}}/>:<p>لینک ورود گارسون را از QR مدیر رستوران باز کنید.</p>}</section>)}
-        {currentView === 'kitchen' && (account?<KitchenKDSApp />:<WebsiteView />)}
+        {currentView === 'kitchen' && (account?.businessRole==='kitchen'&&(!staffBusinessId||account.businessId===staffBusinessId)?<KitchenKDSApp />:account?<section className="staff-entry-screen"><h2>ورود آشپزخانه</h2><p>برای ورود به پنل آشپزخانه باید با شماره‌ای که مالک مجموعه مجاز کرده وارد شوید.</p><button className="staff-primary" onClick={()=>logout()}>خروج و ورود با شماره آشپزخانه</button></section>:<section className="staff-entry-screen"><h2>ورود کارکنان آشپزخانه</h2><PhoneLogin onDone={()=>{}}/></section>)}
       </div>
 
       {inboxOpen&&account&&<OrderDialog title="پیام‌های پشتیبانی" onClose={()=>setInboxOpen(false)}><ManagerInbox/></OrderDialog>}
