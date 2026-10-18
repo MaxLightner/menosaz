@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const textExtensions = new Set(['.html', '.css', '.js', '.json', '.webmanifest']);
-const assetRoots = ['media/', 'menu-assets/', 'paper-', 'fonts/', 'plate.glb'];
+const assetRoots = ['media/', 'menu-assets/', 'menu-tiles/', 'paper-', 'fonts/', 'plate.glb'];
 const site = new URL(process.env.VITE_PUBLIC_URL || 'https://maxlightner.github.io/menosaz');
 const prefix = site.pathname.replace(/\/$/, '');
 
