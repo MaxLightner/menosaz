@@ -44,3 +44,5 @@
 .mizato-waiter-report>div{display:flex;gap:12px;flex-wrap:wrap;font-size:.87rem}.mizato-waiter-report details{margin:10px 0}
 .mizato-waiter-report details p{border-bottom:1px solid #d7e2d3;padding:5px}
 @media(max-width:500px){.mizato-staff-form{grid-template-columns:1fr}.mizato-staff-qr img{width:128px}}
+
+.mizato-optout-button{display:block;margin:8px auto;padding:6px 12px;border:1px solid #d8d0bc;border-radius:8px;color:#5c5140;font-size:.75rem;text-decoration:underline}
