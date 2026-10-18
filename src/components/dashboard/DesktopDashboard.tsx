@@ -1240,12 +1240,12 @@ export const DesktopDashboard: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-2.5 px-3 text-center">
-                          <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                          <label className="inline-flex items-center gap-1.5 cursor-pointer relative">
                             <input 
                               type="checkbox" 
                               checked={prod.isAvailable}
                               onChange={(e) => toggleProductAvailability(prod.id, e.target.checked)}
-                              className="sr-only peer" 
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0 peer z-10" 
                             />
                             <div className="w-7 h-4 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-3 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-700 relative"></div>
                             <span className={`text-[11px] font-bold ${prod.isAvailable ? 'text-emerald-800' : 'text-[#465B3F]'}`}>
