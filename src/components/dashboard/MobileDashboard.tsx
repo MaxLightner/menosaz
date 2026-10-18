@@ -1,3 +1,4 @@
+import {ProductPriceEditor} from './ProductPriceEditor';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
@@ -12,15 +13,11 @@ export const MobileDashboard: React.FC = () => {
   const { 
     business,menus,assignProductMenu, 
     products, 
-    updateProductPrice, 
     toggleProductAvailability,
     orders, 
-    updateOrderStatus, 
-    updateDeliveryStatus, 
-    updatePaymentStatus,
     servicePoints,
     setSelectedTableNumber,
-    setCurrentView
+    setCurrentView,showToast
   } = useApp();
   const {openSample}=usePresentation();
 
@@ -330,39 +327,7 @@ export const MobileDashboard: React.FC = () => {
                       </div>
 
                       {/* Actions */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        {isPending ? (
-                          <button 
-                            onClick={() => updateOrderStatus(order.id, 'cooking')}
-                            className="w-full bg-[#51805A] hover:bg-[#51805A] text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">soup_kitchen</span>
-                            <span>تأیید و ارسال به آشپزخانه</span>
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => updateDeliveryStatus(order.id, isDelivered ? 'pending' : 'delivered')}
-                            className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
-                              isDelivered ? 'bg-[#EAF2EC] text-[#465B3F]' : 'bg-[#465B3F] text-white'
-                            }`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">room_service</span>
-                            <span>{isDelivered ? 'تحویل شد' : 'ثبت تحویل به میز'}</span>
-                          </button>
-                        )}
-
-                        <button 
-                          onClick={() => updatePaymentStatus(order.id, isPaid ? 'unpaid' : 'paid_pos')}
-                          className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border transition-all ${
-                            isPaid 
-                              ? 'bg-emerald-50 text-emerald-900 border-emerald-300' 
-                              : 'bg-[#EEF2E8] text-[#29372E] border-[#DBE2D5]'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">payments</span>
-                          <span>{isPaid ? 'تسویه شده' : 'ثبت تسویه وجه'}</span>
-                        </button>
-                      </div>
+                      <p className="text-xs text-[#506354]">دریافت وجه، ارسال به آشپزخانه و تحویل را گارسون از حساب خودش ثبت می‌کند.</p>
                     </div>
                   );
                 })}
@@ -455,7 +420,7 @@ export const MobileDashboard: React.FC = () => {
                     <div className="flex items-center gap-2 min-w-0">
                       <img onClick={()=>setEditingImage(prod)} src={localProductImage(prod)} alt={prod.name} className="w-11 h-11 object-cover rounded-lg shrink-0 border" />
                       <div className="min-w-0">
-                        <div className="font-bold text-sm text-[#29372E] whitespace-normal">{prod.name}</div>{menus.length>1&&<select aria-label={'انتقال به منوی دیگر: '+prod.name} value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value)}>{menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
+                        <div className="font-bold text-sm text-[#29372E] whitespace-normal">{prod.name}</div>{menus.length>1&&<select aria-label={'انتقال به منوی دیگر: '+prod.name} value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value).catch(err=>showToast(err.message))}>{menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
                         <div className="text-[11px] text-[#51805A] font-bold mt-0.5">
                           {prod.price.toLocaleString('fa-IR')} تومان
                         </div>
@@ -472,16 +437,7 @@ export const MobileDashboard: React.FC = () => {
                         />
                         <div className="w-7 h-4 bg-stone-300 rounded-full peer peer-checked:bg-emerald-700 relative after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 peer-checked:after:-translate-x-3 transition-all"></div>
                       </label>
-                      <button 
-                        onClick={() => {
-                          const newPrice = prompt(`قیمت جدید برای ${prod.name} (تومان):`, prod.price.toString());
-                          if (newPrice) updateProductPrice(prod.id, Number(newPrice));
-                        }}
-                        className="p-1 text-[#506354] hover:text-[#D35400] bg-[#EEF2E8] rounded"
-                        title="ویرایش قیمت"
-                      >
-                        <span className="material-symbols-outlined text-sm">edit</span>
-                      </button>
+                      <ProductPriceEditor product={prod}/>
                     </div>
                   </div>
                 ))}
@@ -593,6 +549,7 @@ export const MobileDashboard: React.FC = () => {
         {/* QR Modal */}
         <AllQRAccessModal 
           isOpen={isQrModalOpen}
+          initialTable={selectedQrTable}
           onClose={() => setIsQrModalOpen(false)}
         />
 

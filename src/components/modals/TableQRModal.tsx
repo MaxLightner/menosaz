@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import {usePresentation} from '../../context/PresentationContext';
 import { useApp } from '../../context/AppContext';
 
 interface TableQRModalProps {
@@ -10,6 +11,7 @@ interface TableQRModalProps {
 
 export const TableQRModal: React.FC<TableQRModalProps> = ({ isOpen, onClose, initialTable = 4 }) => {
   const { business,activeMenuId,servicePoints, setCurrentView, setSelectedTableNumber, showToast } = useApp();
+  const {openSample}=usePresentation();
   const [selectedTable, setSelectedTable] = useState<number>(initialTable);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
@@ -41,14 +43,14 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({ isOpen, onClose, ini
 
   const handleOpenAsCustomer = () => {
     setSelectedTableNumber(selectedTable);
-    setCurrentView('customer');
+    openSample(null);
     onClose();
     showToast(`اپلیکیشن مشتری برای میز ${selectedTable} باز شد`);
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(tableUrl);
-    showToast(`لینک منوی میز ${selectedTable} در کلیپ‌بورد کپی شد`);
+  const handleCopyLink = async () => {
+    try { await navigator.clipboard.writeText(tableUrl); showToast(`لینک منوی میز ${selectedTable} در کلیپ‌بورد کپی شد`); }
+    catch { showToast('کپی لینک انجام نشد؛ دسترسی کلیپ‌بورد مرورگر را بررسی کن.'); }
   };
 
   return (

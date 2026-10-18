@@ -1,4 +1,5 @@
 import {BrandLogo} from '../common/BrandLogo';
+import {ProductPriceEditor} from './ProductPriceEditor';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
@@ -15,12 +16,8 @@ export const DesktopDashboard: React.FC = () => {
     business,menus,activeMenuId,assignProductMenu, 
     updateBusinessSettings, 
     products, 
-    updateProductPrice, 
     toggleProductAvailability,
     orders, 
-    updateOrderStatus, 
-    updateDeliveryStatus, 
-    updatePaymentStatus,
     servicePoints, 
     toggleTableOccupancy,
     setCurrentView, 
@@ -94,9 +91,9 @@ export const DesktopDashboard: React.FC = () => {
 
   const occupiedTablesCount = servicePoints.filter(sp => sp.isOccupied).length;
 
-  const copyLink = (url: string, name: string) => {
-    navigator.clipboard.writeText(url);
-    showToast(`لینک مستقیم ${name} با موفقیت کپی شد`);
+  const copyLink = async (url: string, name: string) => {
+    try { await navigator.clipboard.writeText(url); showToast(`لینک مستقیم ${name} با موفقیت کپی شد`); }
+    catch { showToast('کپی لینک انجام نشد؛ دسترسی کلیپ‌بورد مرورگر را بررسی کن.'); }
   };
 
   return (
@@ -799,32 +796,7 @@ export const DesktopDashboard: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {isPending && (
-                              <button
-                                onClick={() => updateOrderStatus(order.id, 'cooking')}
-                                className="px-3 py-1.5 bg-[#465B3F] hover:bg-[#51805A] text-white rounded-xl text-xs font-bold"
-                              >
-                                تأیید به آشپزخانه
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => updateDeliveryStatus(order.id, isDelivered ? 'pending' : 'delivered')}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold ${
-                                isDelivered ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-[#465B3F] text-white'
-                              }`}
-                            >
-                              {isDelivered ? 'تحویل داده شده' : 'ثبت تحویل'}
-                            </button>
-
-                            <button
-                              onClick={() => updatePaymentStatus(order.id, isSettled ? 'unpaid' : 'paid_pos')}
-                              className="px-3 py-1.5 bg-[#F6F7F4] hover:bg-[#EEF2E8] border border-[#DBE2D5] text-[#29372E] rounded-xl text-xs font-bold"
-                            >
-                              {isSettled ? 'تسویه شد ✓' : 'تسویه فاکتور'}
-                            </button>
-                          </div>
+                          <p className="text-xs text-[#506354]">دریافت وجه، ارسال به آشپزخانه و تحویل را گارسون از حساب خودش ثبت می‌کند.</p>
                         </div>
                       </div>
                     );
@@ -1265,13 +1237,7 @@ export const DesktopDashboard: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
-                            <input 
-                              type="number"
-                              step="5000"
-                              value={prod.price}
-                              onChange={(e) => updateProductPrice(prod.id, Number(e.target.value))}
-                              className="w-28 h-8 text-center font-bold border border-[#DBE2D5] rounded-lg bg-white text-[#29372E] text-xs font-mono shadow-xs"
-                            />
+                            <ProductPriceEditor product={prod}/>
                             <span className="text-[10px] text-stone-500">تومان</span>
                           </div>
                         </td>

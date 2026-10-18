@@ -195,7 +195,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
   // Toggle availability (out of stock / in stock)
   const toggleProductAvailability = async (productId: string, isAvailable: boolean, reason?: string) => {
-    const p=await api<Product>('/products/'+productId,{isAvailable,outOfStockReason:reason||''},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));return;
+    try{const p=await api<Product>('/products/'+productId,{isAvailable,outOfStockReason:reason||''},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));showToast('موجودی ذخیره شد');}catch(e){showToast((e as Error).message||'موجودی ذخیره نشد');}return;
   };
   // Add new food item
   const addProduct = async (productData: Omit<Product, 'id' | 'businessId' | 'updatedAt'>): Promise<string> => {

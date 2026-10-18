@@ -36,7 +36,8 @@ export function MenuSetupWizard(){
 
   function updateCategory(id:string,patch:Partial<CategoryDraft>){setCategories(list=>list.map(c=>c.id===id?{...c,...patch,items:patch.count!==undefined?Array.from({length:patch.count},(_,i)=>c.items[i]||''):c.items}:c));}
   function addCategory(){setCategories(list=>[...list,{id:crypto.randomUUID(),name:'',count:2,items:['','']}]);}
-  async function build(groups:{category:string;items:string[]}[]){
+  async function build(input:{category:string;items:string[]}[]){
+    const groups=input.map(g=>({...g,items:g.items.map(name=>name.trim()).filter(Boolean)})).filter(g=>g.items.length);
     const items=groups.flatMap(g=>g.items.map(name=>({name:name.trim(),categoryId:g.category.trim()}))).filter(x=>x.name&&x.categoryId);
     if(!items.length)throw Error('حداقل یک آیتم برای منو وارد کن.');
     if(!capabilities)throw Error('ظرفیت اشتراک هنوز دریافت نشده؛ دوباره تلاش کن.');

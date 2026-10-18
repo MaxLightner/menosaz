@@ -23,7 +23,7 @@ import {MenuSetupWizard} from './components/dashboard/MenuSetupWizard';
 import {WebsiteContentAdmin} from './components/dashboard/WebsiteContentAdmin';
 
 const AppContent: React.FC = () => {
-  const { currentView, setCurrentView, toastMessage,showToast,servicePoints,hasAnyProducts,isServerConnected } = useApp();
+  const { currentView, setCurrentView, toastMessage,showToast,servicePoints,hasAnyProducts,isServerConnected,categories,activeMenuId } = useApp();
   const {account,logout,openSample,selectBusiness}=usePresentation();
   const [inboxOpen,setInboxOpen]=useState(false),[teamOpen,setTeamOpen]=useState(false),[sessionsOpen,setSessionsOpen]=useState(false),[profileDeferred,setProfileDeferred]=useState(false);
   useEffect(()=>{const resume=()=>setProfileDeferred(false);window.addEventListener('profile-resume',resume);return()=>window.removeEventListener('profile-resume',resume);},[]);
@@ -63,7 +63,7 @@ const AppContent: React.FC = () => {
       {sessionsOpen&&canManage&&<OrderDialog title="نشست‌ها و زمان حضور" onClose={()=>setSessionsOpen(false)}><SessionReport/></OrderDialog>}
       {teamOpen&&account?.businessRole==='owner'&&<OrderDialog title="دسترسی کارکنان" onClose={()=>setTeamOpen(false)}><TeamAccess key={account.businessId}/></OrderDialog>}
       {appearanceOpen&&account&&<OrderDialog title="ظاهر منوی مشتری" onClose={()=>setAppearanceOpen(false)}><MenuAppearance onPreview={()=>setAppearanceOpen(false)} /></OrderDialog>}
-      {manager&&account&&canManage&&!account.needsProfile&&isServerConnected&&!hasAnyProducts&&<MenuSetupWizard/>}
+      {manager&&account&&canManage&&!account.needsProfile&&isServerConnected&&!hasAnyProducts&&categories.length===0&&<MenuSetupWizard key={activeMenuId}/>}
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#1C1917]/95 text-white px-4 py-3 rounded-2xl shadow-2xl border border-amber-600/60 backdrop-blur-md flex items-center gap-2.5 text-base font-bold">

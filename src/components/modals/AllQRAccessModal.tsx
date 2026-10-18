@@ -1,18 +1,21 @@
 import {PointMenus} from '../dashboard/PointMenus';
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import {usePresentation} from '../../context/PresentationContext';
 import { useApp } from '../../context/AppContext';
 
 interface AllQRAccessModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultTab?: 'tables' | 'waiter' | 'kitchen';
+  initialTable?: number;
 }
 
 export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   isOpen,
   onClose,
-  defaultTab = 'tables'
+  defaultTab = 'tables',
+  initialTable = 4
 }) => {
   const { 
     business,activeMenuId, 
@@ -23,6 +26,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'tables' | 'waiter' | 'kitchen'>(defaultTab);
+  const {openSample}=usePresentation();
   const [selectedTable, setSelectedTable] = useState<number>(4);
 
   const [tableQrUrl, setTableQrUrl] = useState<string>('');
@@ -38,8 +42,9 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setActiveTab(defaultTab);
+      setSelectedTable(servicePoints.some(p=>p.tableNumber===initialTable)?initialTable:(servicePoints[0]?.tableNumber||initialTable));
     }
-  }, [isOpen, defaultTab]);
+  }, [isOpen, defaultTab, initialTable]);
 
   // Generate QR codes
   useEffect(() => {
@@ -70,14 +75,14 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
 
   if (!isOpen) return null;
 
-  const copyToClipboard = (url: string, title: string) => {
-    navigator.clipboard.writeText(url);
-    showToast(`لینک مستقیم ${title} کپی شد`);
+  const copyToClipboard = async (url: string, title: string) => {
+    try { await navigator.clipboard.writeText(url); showToast(`لینک مستقیم ${title} کپی شد`); }
+    catch { showToast('کپی لینک انجام نشد؛ دسترسی کلیپ‌بورد مرورگر را بررسی کن.'); }
   };
 
   const handleOpenCustomer = () => {
     setSelectedTableNumber(selectedTable);
-    setCurrentView('customer');
+    openSample(null);
     onClose();
     showToast(`اپلیکیشن مشتری برای میز ${selectedTable} باز شد`);
   };
