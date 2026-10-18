@@ -35,7 +35,8 @@ export const DesktopDashboard: React.FC = () => {
   const [selectedHubTable, setSelectedHubTable] = useState<number>(4);
   const [menuSearch, setMenuSearch] = useState('');
   const [editingImage,setEditingImage]=useState<Product|null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'tables' | 'three_apps_qr'>('menu');
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'tables' | 'three_apps_qr'>(()=>{try{const saved=sessionStorage.getItem('mizato-desktop-panel');return ["overview","menu","tables","three_apps_qr"].includes(saved||'')?saved as 'overview' | 'menu' | 'tables' | 'three_apps_qr':'menu';}catch{return 'menu';}});
+  useEffect(()=>{try{sessionStorage.setItem('mizato-desktop-panel',activeTab);}catch{}},[activeTab]);
 
   // Hub QR Codes URLs
   const [hubTableQrUrl, setHubTableQrUrl] = useState<string>('');
