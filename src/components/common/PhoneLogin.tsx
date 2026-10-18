@@ -13,8 +13,8 @@ export function PhoneLogin({onDone}:{onDone:()=>void}){
  const wait=Math.max(0,Math.ceil(((pending?.nextSendAt||0)-now)/1000)),expired=!!pending?.challenge&&pending.expiresAt<=now;
  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),500);return()=>clearInterval(timer);},[]);
  function keep(value:any){setPending(value);try{value?sessionStorage.setItem(KEY,JSON.stringify(value)):sessionStorage.removeItem(KEY);}catch{}}
- async function send(){if(busy||wait)return;setBusy(true);setError('');try{
-  const data=await api('/auth/request',{phone});const sentAt=Date.now();const delay=typeof data.resendAt==='number'&&typeof data.serverNow==='number'?Math.max(0,data.resendAt-data.serverNow):(data.resendIn||60)*1000;
+ async function send(){if(busy||wait)return;const normalized=digits(phone).replace(/\D/g,'');if(!/^09\d{9}$/.test(normalized)){setError('شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');return;}setBusy(true);setError('');try{
+  const data=await api('/auth/request',{phone:normalized});const sentAt=Date.now();const delay=typeof data.resendAt==='number'&&typeof data.serverNow==='number'?Math.max(0,data.resendAt-data.serverNow):(data.resendIn||60)*1000;
   setPhone(data.phone);setCode('');keep({phone:data.phone,challenge:data.challenge||'',demoCode:data.demoCode||'',nextSendAt:sentAt+delay,expiresAt:sentAt+(data.expiresIn||120)*1000,remember});setNow(sentAt);
  }catch(e){setError((e as Error).message);if(e instanceof ApiError&&e.retryAfter){keep({...pending,phone,expiresAt:Date.now()+Math.max(e.retryAfter,120)*1000,nextSendAt:Date.now()+e.retryAfter*1000});}}
  finally{setBusy(false);}}
