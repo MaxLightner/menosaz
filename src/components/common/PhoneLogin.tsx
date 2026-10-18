@@ -1,3 +1,4 @@
+import {BrandLogo} from './BrandLogo';
 import React,{useEffect,useState} from 'react';
 import {usePresentation} from '../../context/PresentationContext';
 import {api,ApiError} from '../../services/backend';
@@ -20,6 +21,7 @@ export function PhoneLogin({onDone}:{onDone:()=>void}){
  async function verify(){if(busy||expired)return;setBusy(true);setError('');try{await verifyPhone(phone,digits(code),{remember,mode:'auto',challenge:pending.challenge});keep(null);onDone();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  const sent=!!pending?.challenge||!!pending?.demoCode;
  return <form className="phone-login" onSubmit={e=>{e.preventDefault();sent?verify():send();}}>
+  <div className="phone-login-brand"><BrandLogo/></div>
   <p>{sent?'کد پیامک‌شده به '+phone+' را وارد کن.':'شماره موبایل را وارد کن؛ ورود و ساخت حساب از همین‌جا انجام می‌شود.'}</p>
   {sent?<label>کد ورود<input aria-label="کد ورود" inputMode="numeric" autoComplete="one-time-code" value={code} maxLength={6} onChange={e=>setCode(digits(e.target.value).replace(/\D/g,''))} autoFocus/></label>:<><label>شماره موبایل<input aria-label="شماره موبایل" type="tel" inputMode="tel" autoComplete="tel" dir="ltr" placeholder="09123456789" value={phone} onChange={e=>setPhone(digits(e.target.value))} autoFocus/></label><label className="auth-checkbox"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> مرا به خاطر بسپار</label></>}
   {sent&&pending.demoCode&&<p className="demo-code">آزمایش محلی؛ پیامک ارسال نمی‌شود. کد: <b>{pending.demoCode}</b></p>}

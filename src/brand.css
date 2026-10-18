@@ -1,0 +1,17 @@
+.mizato-brand{display:inline-flex;align-items:center;justify-content:center;gap:9px;direction:ltr;vertical-align:middle;flex-shrink:0;line-height:1;max-width:100%}
+.mizato-brand img{display:block;object-fit:contain;flex:none;height:auto;max-width:none}
+.mizato-brand .mizato-brand-mark{width:45px;height:41px}
+.mizato-brand .mizato-brand-word{width:100px;height:43px}
+.mizato-brand-compact{gap:6px}
+.mizato-brand-compact .mizato-brand-mark{width:33px;height:30px}
+.mizato-brand-compact .mizato-brand-word{width:76px;height:33px}
+.public-brand .mizato-brand{margin-block:1px}
+.phone-login-brand{text-align:center;padding:3px 0 9px}
+.phone-login-brand .mizato-brand{gap:12px}
+.phone-login-brand .mizato-brand-mark{width:54px;height:49px}
+.phone-login-brand .mizato-brand-word{width:114px;height:49px}
+.manager-utility>.mizato-brand{margin-inline-end:auto}
+.mizato-menu-credit{display:flex;justify-content:center;padding:10px 0 20px;opacity:.7}
+.mizato-menu-credit .mizato-brand{transform:scale(.76);transform-origin:center}
+.admin-panel>header>.mizato-brand{margin-inline-end:10px}
+@media(max-width:460px){.public-brand .mizato-brand{gap:6px}.public-brand .mizato-brand-mark{width:36px;height:33px}.public-brand .mizato-brand-word{width:82px;height:35px}}

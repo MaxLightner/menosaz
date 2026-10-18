@@ -11,5 +11,5 @@ export async function enableAppNotifications(){
 }
 export function incomingNotice(id:string,message:string){
  notificationSound();window.dispatchEvent(new CustomEvent('menosaz-alert',{detail:{id,message}}));
- if(document.hidden&&'Notification'in window&&Notification.permission==='granted'){try{new Notification('منوساز',{body:message,tag:id});}catch{}}
+ if(document.hidden&&'Notification'in window&&Notification.permission==='granted'){try{new Notification('میزاتو',{body:message,tag:id});}catch{}}
 }

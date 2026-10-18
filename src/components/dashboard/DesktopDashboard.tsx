@@ -1,3 +1,4 @@
+import {BrandLogo} from '../common/BrandLogo';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
@@ -111,10 +112,7 @@ export const DesktopDashboard: React.FC = () => {
               onClick={() => setCurrentView('website')}
               className="flex items-center gap-2.5 hover:opacity-85 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#465B3F] via-[#51805A] to-[#6E9564] flex items-center justify-center text-white shadow-sm">
-                <span className="material-symbols-outlined text-[22px]">restaurant</span>
-              </div>
-              <span className="text-xl text-[#51805A] font-black tracking-tight">منوساز</span>
+              <BrandLogo compact/>
             </button>
             <span className="px-2.5 py-0.5 rounded-full bg-[#f0ede9] text-[#465B3F] text-[11px] border border-[#DBE2D5] font-bold">
               پنل مدیریت
@@ -239,7 +237,7 @@ export const DesktopDashboard: React.FC = () => {
           </div>
         </nav>
 
-        <div className="manager-sidebar-support"><a href="tel:09152061541">تماس با پشتیبانی ↗</a><small>منوساز · مدیریت مجموعه</small></div>
+        <div className="manager-sidebar-support"><a href="tel:09152061541">تماس با پشتیبانی ↗</a><small>میزاتو · مدیریت مجموعه</small></div>
       </aside>
 
       {/* MAIN WORKSPACE & DASHBOARD CANVAS */}
@@ -847,7 +845,7 @@ export const DesktopDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base text-[#1C1917] font-black">
-                      مرکز مدیریت ۳ اپلیکیشن و کیو‌آر کدهای اختصاصی منوساز
+                      مرکز مدیریت ۳ اپلیکیشن و کیو‌آر کدهای اختصاصی میزاتو
                     </h3>
                     <p className="text-xs text-[#64715E] mt-0.5">
                       هر سرویس‌پوینت (میز) دارای یک QR کد مستقل است، همچنین اپ گارسون و مانیتور رستوران به تفکیک دارای لینک و QR هستند.

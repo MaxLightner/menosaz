@@ -106,7 +106,7 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
             </div>
             <div>
               <h3 className="font-black text-base text-[#1C1917]">
-                مرکز کیو آر کدها و دسترسی‌های اختصاصی منویار
+                مرکز کیو آر کدها و دسترسی‌های اختصاصی میزاتو
               </h3>
               <p className="text-xs text-[#7A6458] mt-0.5">
                 تولید QR کد پایدار برای هر میز (سرویس‌پوینت)، اپ گارسون و مانیتور رستوران
