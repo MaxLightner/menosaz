@@ -28,7 +28,7 @@ interface AppContextType {
   menuMessage:string;guestSessionClosed:boolean;startNewGuestSession:()=>void;
   categories:Category[];
   hasAnyProducts:boolean;
-  menus:MenuDefinition[];activeMenuId:string;setActiveMenuId:(id:string)=>void;createMenu:(name:string,kind:string)=>Promise<MenuDefinition>;assignProductMenu:(id:string,menuId:string)=>Promise<void>;
+  menus:MenuDefinition[];activeMenuId:string;setActiveMenuId:(id:string)=>void;createMenu:(name:string,kind:string)=>Promise<MenuDefinition>;assignProductMenu:(id:string,menuId:string)=>Promise<void>;archiveProduct:(id:string)=>Promise<void>;
   submitToKitchen:(id:string)=>Promise<void>;
   confirmKitchen:(id:string)=>Promise<void>;
   markDelivered:(id:string)=>Promise<void>;
@@ -83,6 +83,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   function setActiveMenuId(id:string){setMenuId(id); }
   async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',commandBody({name:clean,kind},pendingMenu));pendingMenu.current=null;setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
   async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
+  async function archiveProduct(id:string):Promise<void>{
+    const product=products.find(p=>p.id===id);
+    if(!product)throw Error('غذا در منوی فعلی پیدا نشد؛ صفحه را به‌روز کن.');
+    const archiveName='آرشیو آیتم‌های حذف‌شده';
+    let archive=menus.find(m=>m.name===archiveName&&!m.published);
+    if(!archive){
+      const created=await api<MenuDefinition>('/menus',{name:archiveName,kind:'restaurant'},'POST');
+      archive=await api<MenuDefinition>('/menus/'+created.id,{published:false},'PATCH');
+      setMenus(prev=>prev.some(m=>m.id===archive!.id)?prev:[...prev,archive!]);
+    }
+    const updated=await api<Product>('/products/'+id,{menuId:archive.id,isAvailable:false},'PATCH');
+    setProducts(prev=>prev.map(p=>p.id===id?updated:p));
+    showToast('غذا از منوی مشتری برداشته شد و در آرشیو قرار گرفت.');
+    window.dispatchEvent(new Event('workspace-auth'));
+  }
   const [currentView,setCurrentViewState]=useState<AppView>(()=>viewFromSearch(window.location.search));
   function setCurrentView(view:AppView){
     setCurrentViewState(view);
@@ -298,6 +313,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
         business:{...business,...menus.find(m=>m.id===activeMenuId)?.appearance},
         updateBusinessSettings,
         menuMessage,guestSessionClosed,startNewGuestSession,menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
+        archiveProduct,
         hasAnyProducts:products.some(p=>(p.menuId||'main')===activeMenuId),
         products:products.filter(p=>(p.menuId||'main')===activeMenuId),
         updateProductImage,updateProductPrice,
