@@ -5,3 +5,42 @@
 @media(max-width:360px){.menu-header{padding:12px 14px}.menu-tools{gap:16px}.menu-identity strong{font-size:19px}.menu-food{margin:0 12px}.menu-food-name{font-size:21px!important}.menu-food-bottom>span{font-size:17px}.menu-overview section>div{padding:0 10px;gap:0 6px}.menu-overview-name{font-size:16px!important}.restored-staff{padding-inline:8px}.restored-kitchen{padding:10px}.kitchen-food{font-size:21px;padding:12px}.staff-order-top time{font-size:11px}.menu-cart-row>img{width:45px;height:45px}}
 
 .menu-header{padding:10px 14px}.menu-compact-row{display:flex;align-items:center;gap:8px}.menu-compact-row>strong{font-size:20px;color:var(--menu-primary);font-weight:900;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.menu-header-actions{display:flex;align-items:center;gap:3px;margin-right:auto}.menu-header-actions button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:52px;min-height:43px;padding:2px 5px;border-radius:8px;background:#ffffff4d;font-size:11px}.menu-header>.menu-table{display:block;width:max-content;margin:-2px 0 0 auto;padding:2px 8px;font-size:12px}.menu-site-back+ .menu-compact-row{margin-top:2px}@media(max-width:360px){.menu-header{padding:8px 10px}.menu-compact-row>strong{font-size:18px}.menu-header-actions button{min-width:45px;font-size:10px}.menu-header-actions svg{width:19px}}
+
+
+/* Waiter login, attendance and private customer feedback */
+.staff-entry-screen{width:min(440px,95vw);margin:5vh auto;padding:24px;background:#fff;border:1px solid #dbe2d5;border-radius:20px;box-shadow:0 10px 35px #18261919;direction:rtl}
+.staff-entry-screen h2{font-weight:800;font-size:1.3rem;margin-bottom:10px}
+.mizato-customer-top-notice{position:sticky;top:0;z-index:80;margin:0 auto;padding:13px 18px;background:#eef6e8;border-bottom:2px solid #54805a;color:#29442c;font-weight:800;text-align:center;box-shadow:0 5px 12px #13231b1c;direction:rtl}
+.mizato-feedback-banner{direction:rtl;margin:10px 14px;padding:14px 16px;background:#fff8e9;border:1px solid #ead4a9;border-radius:14px;color:#463e2c}
+.mizato-feedback-banner b{font-size:1rem}.mizato-feedback-banner p{font-size:.85rem;margin:8px 0}.mizato-feedback-banner button{background:#426848;color:white;padding:8px 16px;border-radius:10px;font-weight:700}
+.mizato-feedback-form{display:flex;flex-direction:column;gap:12px;direction:rtl}
+.mizato-feedback-form label{display:flex;flex-direction:column;gap:5px;font-weight:600}
+.mizato-feedback-form input[type="tel"],.mizato-feedback-form textarea,.mizato-staff-form input{width:100%;border:1px solid #cdd8ce;border-radius:10px;padding:10px;background:#fff;color:#22312a}
+.mizato-feedback-form fieldset,.mizato-staff-form fieldset{border:1px solid #dce4db;border-radius:12px;padding:12px}
+.mizato-feedback-form legend,.mizato-staff-form legend{font-weight:800;padding:0 8px}
+.mizato-stars{display:flex;gap:6px}.mizato-stars button{font-size:30px;color:#b8beb4;line-height:1;cursor:pointer}.mizato-stars button.selected{color:#df9f24}
+.mizato-feedback-form label.mizato-feedback-check{display:flex;flex-direction:row;align-items:start;gap:10px;font-weight:500;font-size:.9rem}
+.mizato-feedback-check input{flex-shrink:0;margin-top:4px}
+.mizato-feedback-privacy{font-size:.77rem;color:#63736a}
+.mizato-staff-manager,.mizato-report{direction:rtl;display:flex;flex-direction:column;gap:13px;min-width:0;max-height:68vh;overflow:auto}
+.mizato-staff-manager h3,.mizato-report h3{font-size:1.1rem;font-weight:800}
+.mizato-staff-qr{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px;border:1px solid #dbe2d5;border-radius:12px;background:#f7faf6}
+.mizato-staff-qr img{width:160px;max-width:100%;height:auto;background:#fff}
+.mizato-staff-qr div{display:flex;flex-direction:column;gap:8px;flex:1;min-width:180px}
+.mizato-staff-qr button,.mizato-staff-actions button,.mizato-report>button{padding:7px 12px;border:1px solid #b5c7b8;border-radius:8px}
+.mizato-staff-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mizato-staff-form>fieldset,.mizato-staff-form>.mizato-staff-times,.mizato-staff-form>.staff-primary{grid-column:1/-1}
+.mizato-staff-form label{display:flex;flex-direction:column;gap:6px}
+.mizato-staff-days{display:flex;flex-wrap:wrap;gap:10px}.mizato-staff-days label{display:flex;flex-direction:row;align-items:center}
+.mizato-staff-times{display:flex;gap:12px;flex-wrap:wrap}.mizato-staff-times label{flex:1}
+.mizato-staff-list,.mizato-report{display:flex;flex-direction:column;gap:12px}
+.mizato-staff-list article,.mizato-report article{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #dce3db;border-radius:12px;background:#fff}
+.mizato-staff-list article strong{display:block}.mizato-staff-list article small{display:block;color:#607164}
+.mizato-staff-stats{display:flex;flex-wrap:wrap;gap:8px}.mizato-staff-stats span,.mizato-report-kpis strong{font-size:.82rem;background:#f0f5ef;border-radius:8px;padding:6px 9px}
+.mizato-staff-actions{display:flex;gap:8px}
+.mizato-report-kpis{display:flex;gap:9px;flex-wrap:wrap}
+.mizato-waiter-report{border:1px solid #d8e5d4;background:#f5fbf4;padding:14px;border-radius:16px;margin-bottom:10px;direction:rtl}
+.mizato-waiter-report h2{font-size:1.1rem;font-weight:800}.mizato-waiter-report p{font-size:.85rem;margin:6px 0}
+.mizato-waiter-report>div{display:flex;gap:12px;flex-wrap:wrap;font-size:.87rem}.mizato-waiter-report details{margin:10px 0}
+.mizato-waiter-report details p{border-bottom:1px solid #d7e2d3;padding:5px}
+@media(max-width:500px){.mizato-staff-form{grid-template-columns:1fr}.mizato-staff-qr img{width:128px}}
