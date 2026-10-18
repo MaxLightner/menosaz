@@ -255,10 +255,10 @@ begin
    consent_at=case when excluded.marketing_consent and not mizato_customer_club.marketing_consent then now() else mizato_customer_club.consent_at end,
    consent_revoked_at=case when excluded.marketing_consent then null else mizato_customer_club.consent_revoked_at end;
  end if;
- return jsonb_build_object('status',200,'data',jsonb_build_object('ok',true));
+ return jsonb_build_object('status',200,'data',jsonb_build_object('ok',true,'unsubscribeToken',case when consent and ph is not null then (select unsubscribe_token from mizato_customer_club where business_id=bid and phone=ph) end));
 exception when others then
  return jsonb_build_object('status',400,'data',jsonb_build_object('error',sqlerrm));
-end $$;
+end $;
 
 create function public.mizato_feedback_api(p_path text,p_body jsonb,p_uid uuid)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
