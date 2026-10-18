@@ -2,56 +2,181 @@ import React,{useMemo,useState,useEffect,useRef} from 'react';
 import {api} from '../../services/backend';
 import {useApp} from '../../context/AppContext';
 import {buildMenu,type CatalogCapabilities,type PendingCommand} from '../../services/catalog';
+import {MENU_KINDS,MENU_PRESETS,defaultMenuName,effectiveMenuName,type MenuKind} from '../../services/menuTemplates';
+import {sourcePhotoForItem,suggestedMenuImage} from '../../services/menuImages';
+import {displayImagePath} from '../../lib/imagePath';
 
-type Kind='restaurant'|'cafe'|'hotel'|'juice';
 type CategoryDraft={id:string;name:string;count:number;items:string[]};
-
-const KINDS:{id:Kind;title:string;hint:string;icon:string}[]=[
-  {id:'restaurant',title:'رستوران',hint:'غذاهای اصلی، پیش‌غذا و نوشیدنی',icon:'restaurant'},
-  {id:'cafe',title:'کافه',hint:'قهوه، نوشیدنی سرد و دسر',icon:'coffee'},
-  {id:'hotel',title:'هتل و روم‌سرویس',hint:'صبحانه، روم‌سرویس و میان‌وعده',icon:'hotel'},
-  {id:'juice',title:'آبمیوه و بستنی',hint:'آبمیوه، شیک، بستنی و معجون',icon:'local_bar'},
-];
-
-const DEFAULTS:Record<Kind,{category:string;items:string[]}[]>={
-  restaurant:[{category:'کباب‌ها',items:['چلوکباب کوبیده','جوجه کباب زعفرانی','کباب برگ']},{category:'غذاهای ایرانی',items:['زرشک‌پلو با مرغ','باقالی‌پلو با گوشت']},{category:'نوشیدنی‌ها',items:['دوغ محلی','نوشابه']},{category:'دسر و مخلفات',items:['سالاد فصل','ماست موسیر','بستنی سنتی']}],
-  cafe:[{category:'قهوه گرم',items:['اسپرسو','آمریکانو','کاپوچینو','لاته']},{category:'نوشیدنی سرد',items:['آیس لاته','موهیتو']},{category:'کیک و دسر',items:['چیزکیک','کیک شکلاتی']},{category:'صبحانه',items:['صبحانه ایرانی','املت مخصوص']}],
-  hotel:[{category:'صبحانه',items:['صبحانه ایرانی','صبحانه انگلیسی']},{category:'روم‌سرویس',items:['کلاب ساندویچ','چلو جوجه کباب','پاستا آلفردو']},{category:'نوشیدنی',items:['چای ایرانی','قهوه','آبمیوه طبیعی']},{category:'میان‌وعده',items:['بشقاب میوه','کیک روز']}],
-  juice:[{category:'آبمیوه طبیعی',items:['آب پرتقال','آب هویج','آب انار']},{category:'بستنی',items:['بستنی سنتی','بستنی شکلاتی']},{category:'شیک',items:['شیک موز','شیک شکلات']},{category:'معجون',items:['معجون مخصوص','شیرموز گردو']}],
-};
-
-const IMAGE:Record<Kind,string>={restaurant:'/media/iran-0.webp',cafe:'/menu-assets/cappuccino.webp',hotel:'/menu-assets/espresso.webp',juice:'/menu-assets/orange-juice.webp'};
+type Step='welcome'|'catalog'|'categories'|'items';
+const selectionKey=(c:string,n:string)=>c+'::'+n;
+const emptyCategory=():CategoryDraft=>({id:crypto.randomUUID(),name:'',count:3,items:['','','']});
+const maxStarter=12;
+function initialKind(value:string):MenuKind{
+ return MENU_KINDS.some(k=>k.id===value)?value as MenuKind:'restaurant';
+}
 
 export function MenuSetupWizard(){
-  const {activeMenuId,showToast}=useApp();
-  const [open,setOpen]=useState(true),[step,setStep]=useState<'welcome'|'categories'|'items'>('welcome');
-  const [kind,setKind]=useState<Kind>('restaurant'),[menuName,setMenuName]=useState('منوی اصلی');
-  const [categories,setCategories]=useState<CategoryDraft[]>([{id:crypto.randomUUID(),name:'',count:3,items:['','','']}]);
+  const {activeMenuId,menus,showToast}=useApp();
+  const current=menus.find(m=>m.id===activeMenuId);
+  const [open,setOpen]=useState(true),[step,setStep]=useState<Step>('welcome');
+  const [kind,setKind]=useState<MenuKind>(()=>initialKind(current?.kind||'restaurant'));
+  const [menuName,setMenuName]=useState(()=>effectiveMenuName(current?.name||'',current?.kind||'restaurant'));
+  const [categories,setCategories]=useState<CategoryDraft[]>([emptyCategory()]);
+  const [selected,setSelected]=useState<string[]>([]);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const pending=useRef<PendingCommand>(null);
-  const [capabilities,setCapabilities]=useState<CatalogCapabilities|null>(null);const [loadingCapabilities,setLoadingCapabilities]=useState(false);
-  async function loadCapabilities(){setLoadingCapabilities(true);setError('');try{setCapabilities(await api<CatalogCapabilities>('/catalog/capabilities'));}catch(e){setError((e as Error).message);}finally{setLoadingCapabilities(false);}}useEffect(()=>{loadCapabilities();},[]);
-  const remaining=capabilities?.productLimit==null?null:Math.max(0,capabilities.productLimit-capabilities.products);
-  const total=useMemo(()=>categories.reduce((sum,c)=>sum+c.count,0),[categories]);
-
-  function updateCategory(id:string,patch:Partial<CategoryDraft>){setCategories(list=>list.map(c=>c.id===id?{...c,...patch,items:patch.count!==undefined?Array.from({length:patch.count},(_,i)=>c.items[i]||''):c.items}:c));}
-  function addCategory(){setCategories(list=>[...list,{id:crypto.randomUUID(),name:'',count:2,items:['','']}]);}
-  async function build(input:{category:string;items:string[]}[]){
-    const groups=input.map(g=>({...g,items:g.items.map(name=>name.trim()).filter(Boolean)})).filter(g=>g.items.length);
-    const items=groups.flatMap(g=>g.items.map(name=>({name:name.trim(),categoryId:g.category.trim()}))).filter(x=>x.name&&x.categoryId);
-    if(!items.length)throw Error('حداقل یک آیتم برای منو وارد کن.');
-    if(!capabilities)throw Error('ظرفیت اشتراک هنوز دریافت نشده؛ دوباره تلاش کن.');
-    if(remaining!==null&&items.length>remaining)throw Error(`اشتراک شما ظرفیت ${remaining} آیتم تازه دارد.`);
-    await buildMenu({menuId:activeMenuId,name:menuName.trim()||'منوی اصلی',kind,categories:groups.map(g=>({name:g.category.trim(),items:g.items.map(name=>({name:name.trim(),price:0,description:'قیمت، توضیحات و عکس این آیتم را از مدیریت منو کامل کنید.',isAvailable:false,prepTimeMinutes:15,imageUrl:IMAGE[kind]}))}))},pending);
+  const [capabilities,setCapabilities]=useState<CatalogCapabilities|null>(null);
+  const [loadingCapabilities,setLoadingCapabilities]=useState(false);
+  async function loadCapabilities(){
+    setLoadingCapabilities(true);setError('');
+    try{setCapabilities(await api<CatalogCapabilities>('/catalog/capabilities'));}
+    catch(e){setError((e as Error).message);}
+    finally{setLoadingCapabilities(false);}
   }
-  async function finish(groups:{category:string;items:string[]}[]){setBusy(true);setError('');try{await build(groups);showToast('منوی اولیه ساخته شد؛ حالا قیمت و عکس‌ها را کامل کن.');setOpen(false);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
-  function goToItems(){if(!menuName.trim())return setError('نام منو را وارد کن.');if(categories.some(c=>!c.name.trim()))return setError('نام همه دسته‌ها را وارد کن.');if(new Set(categories.map(c=>c.name.trim().toLocaleLowerCase('fa-IR'))).size!==categories.length)return setError('نام دسته‌ها نباید تکراری باشد.');if(total<1||(remaining!==null&&total>remaining))return setError('تعداد آیتم‌ها بیشتر از ظرفیت اشتراک است.');setError('');setStep('items');}
-  if(!open)return <button className="empty-menu-launcher" onClick={()=>setOpen(true)}><span className="material-symbols-outlined">auto_awesome</span><b>منوی شما هنوز خالی است</b><small>با راهنمای ساخت منو شروع کن</small></button>;
-  return <div className="menu-wizard-backdrop" role="dialog" aria-modal="true" aria-labelledby="menu-wizard-title"><section className="menu-wizard">
-    <button className="menu-wizard-close" aria-label="بستن" onClick={()=>setOpen(false)}>×</button>
-    {step==='welcome'&&<><div className="wizard-mark"><span className="material-symbols-outlined">auto_awesome</span></div><span className="wizard-kicker">خوش آمدی</span><h1 id="menu-wizard-title">اولین منوی مجموعه‌ات را بسازیم</h1><p>نوع فعالیت را انتخاب کن. میزاتو می‌تواند همین حالا دسته‌ها و چند آیتم مناسب را آماده کند؛ بعداً قیمت، عکس و توضیحات را ویرایش می‌کنی.</p><div className="wizard-kind-grid">{KINDS.map(k=><button key={k.id} className={kind===k.id?'selected':''} onClick={()=>setKind(k.id)}><span className="material-symbols-outlined">{k.icon}</span><b>{k.title}</b><small>{k.hint}</small></button>)}</div><div className="wizard-actions"><button className="wizard-primary" disabled={busy||!capabilities} onClick={()=>finish(DEFAULTS[kind])}>{busy?'در حال ساخت…':'ساخت منوی پیش‌فرض'}</button><button className="wizard-secondary" onClick={()=>setStep('categories')}>دسته‌ها را خودم می‌سازم</button></div></>}
-    {step==='categories'&&<><span className="wizard-kicker">ساخت دستی · مرحله ۱ از ۲</span><h1 id="menu-wizard-title">دسته‌های منو را مشخص کن</h1><label className="wizard-field">نام منو<input value={menuName} maxLength={60} onChange={e=>setMenuName(e.target.value)}/></label><label className="wizard-field">نوع منو<select value={kind} onChange={e=>setKind(e.target.value as Kind)}>{KINDS.map(k=><option value={k.id} key={k.id}>{k.title}</option>)}</select></label><div className="wizard-category-list">{categories.map((c,i)=><div key={c.id}><label>نام دسته<input value={c.name} maxLength={40} placeholder={i===0?'مثلاً غذای اصلی':'مثلاً نوشیدنی'} onChange={e=>updateCategory(c.id,{name:e.target.value})}/></label><label>تعداد آیتم<input type="number" min="1" max="10" value={c.count} onChange={e=>updateCategory(c.id,{count:Math.max(1,Math.min(10,Number(e.target.value)||1))})}/></label>{categories.length>1&&<button aria-label="حذف دسته" onClick={()=>setCategories(x=>x.filter(y=>y.id!==c.id))}>×</button>}</div>)}</div><div className="wizard-total"><span>{new Intl.NumberFormat('fa-IR').format(total)} آیتم {remaining===null?'· ظرفیت نامحدود':`از ${new Intl.NumberFormat('fa-IR').format(remaining)} جای خالی`}</span><button onClick={addCategory} disabled={categories.length>=100||(remaining!==null&&total>=remaining)}>＋ اضافه کردن دسته جدید</button></div><div className="wizard-actions"><button className="wizard-primary" onClick={goToItems}>مرحله بعد: نام آیتم‌ها</button><button className="wizard-secondary" onClick={()=>setStep('welcome')}>بازگشت</button></div></>}
-    {step==='items'&&<><span className="wizard-kicker">ساخت دستی · مرحله ۲ از ۲</span><h1 id="menu-wizard-title">نام آیتم‌ها را وارد کن</h1><p>قیمت و عکس را بعد از ساخت منو از همان داشبورد کامل می‌کنی.</p><div className="wizard-items">{categories.map(c=><fieldset key={c.id}><legend>{c.name}</legend>{c.items.map((name,i)=><input key={i} value={name} maxLength={60} placeholder={`${c.name} ${new Intl.NumberFormat('fa-IR').format(i+1)}`} onChange={e=>updateCategory(c.id,{items:c.items.map((v,j)=>j===i?e.target.value:v)})}/>)}</fieldset>)}</div>{error&&<p className="wizard-error" role="alert">{error}</p>}<div className="wizard-actions"><button className="wizard-primary" disabled={busy||!capabilities||categories.every(c=>c.items.every(x=>!x.trim()))} onClick={()=>finish(categories.map(c=>({category:c.name,items:c.items})))}>{busy?'در حال ساخت منو…':'ساخت و ذخیره منو'}</button><button className="wizard-secondary" disabled={busy} onClick={()=>setStep('categories')}>بازگشت</button></div></>}
-    {error&&step!=='items'&&<p className="wizard-error" role="alert">{error}</p>}{!capabilities&&<button type="button" className="wizard-secondary" disabled={loadingCapabilities} onClick={loadCapabilities}>{loadingCapabilities?'در حال دریافت ظرفیت…':'تلاش مجدد برای دریافت ظرفیت اشتراک'}</button>}
-  </section></div>;
+  useEffect(()=>{loadCapabilities();},[]);
+  const remaining=capabilities?.productLimit==null?null:Math.max(0,capabilities.productLimit-capabilities.products);
+  const templates=MENU_PRESETS[kind];
+  const totalAvailable=useMemo(()=>templates.reduce((n,c)=>n+c.items.length,0),[templates]);
+  const defaultKeys=useMemo(()=>{
+    const limit=Math.min(maxStarter,remaining??maxStarter);
+    // Take initial items from different categories; don't silently create hundreds.
+    const keys:string[]=[];
+    for(let slot=0;keys.length<limit&&slot<6;slot++)
+      for(const group of templates){
+        if(keys.length>=limit)break;
+        if(group.items[slot])keys.push(selectionKey(group.name,group.items[slot]));
+      }
+    return keys;
+  },[templates,remaining]);
+  useEffect(()=>{setSelected(defaultKeys);},[defaultKeys]);
+  const selectedGroups=templates.map(g=>({category:g.name,items:g.items.filter(n=>selected.includes(selectionKey(g.name,n)))})).filter(g=>g.items.length);
+  const chosenCount=selectedGroups.reduce((a,g)=>a+g.items.length,0);
+  const totalManual=useMemo(()=>categories.reduce((sum,c)=>sum+c.count,0),[categories]);
+  function chooseKind(next:MenuKind){
+    if(menuName===effectiveMenuName(current?.name||'',kind)||menuName===defaultMenuName(kind)||menuName==='منوی اصلی')
+      setMenuName(defaultMenuName(next));
+    setKind(next);
+  }
+  function updateCategory(id:string,patch:Partial<CategoryDraft>){
+    setCategories(list=>list.map(c=>c.id===id?{
+      ...c,...patch,items:patch.count!==undefined?Array.from({length:patch.count},(_,i)=>c.items[i]||''):c.items
+    }:c));
+  }
+  function addCategory(){setCategories(list=>[...list,emptyCategory()]);}
+  function toggleItem(key:string){setError('');setSelected(list=>list.includes(key)?list.filter(x=>x!==key):[...list,key]);}
+  function toggleGroup(name:string,items:readonly string[]){
+    setError('');
+    const keys=items.map(n=>selectionKey(name,n));
+    setSelected(list=>keys.every(k=>list.includes(k))?list.filter(k=>!keys.includes(k)):[...new Set([...list,...keys])]);
+  }
+
+  async function build(groups:{category:string;items:string[]}[]){
+    const clean=groups.map(g=>({category:g.category.trim(),items:g.items.map(n=>n.trim()).filter(Boolean)})).filter(g=>g.category&&g.items.length);
+    const total=clean.reduce((n,g)=>n+g.items.length,0);
+    if(!menuName.trim())throw Error('نام منو را وارد کن.');
+    if(!total)throw Error('حداقل یک آیتم انتخاب یا وارد کن.');
+    if(!capabilities)throw Error('ظرفیت اشتراک دریافت نشد؛ دوباره تلاش کن.');
+    if(remaining!==null&&total>remaining)throw Error(`فقط ${remaining} جای خالی داری؛ تعداد آیتم‌های انتخابی را کم کن.`);
+    if(new Set(clean.map(g=>g.category.toLocaleLowerCase('fa-IR'))).size!==clean.length)
+      throw Error('دسته‌بندی تکراری است.');
+    const body={
+      menuId:activeMenuId,
+      name:menuName.trim(),kind,
+      categories:clean.map(g=>({
+        name:g.category,
+        items:g.items.map(name=>{
+          const image=sourcePhotoForItem(name,g.category,kind);
+          return {name,price:0,description:'قیمت، توضیحات و وضعیت موجودی این آیتم را از مدیریت منو تکمیل کنید.',
+            isAvailable:false,prepTimeMinutes:15,...(image?{imageUrl:image}:{})};
+        })
+      }))
+    };
+    const result=await buildMenu(body,pending);
+    if(result.productsCreated!==total)throw Error('تعداد آیتم‌های ذخیره‌شده با درخواست مطابقت ندارد؛ منو را بررسی کن.');
+  }
+  async function finish(groups:{category:string;items:string[]}[]){
+    setBusy(true);setError('');
+    try{await build(groups);showToast(`«${menuName.trim()}» با دسته‌ها و آیتم‌های انتخابی ساخته شد؛ قیمت‌ها را تکمیل کن.`);setOpen(false);}
+    catch(e){setError((e as Error).message);}finally{setBusy(false);}
+  }
+  function goToItems(){
+    if(!menuName.trim())return setError('نام منو را وارد کن.');
+    if(categories.some(c=>!c.name.trim()))return setError('نام همه دسته‌ها را وارد کن.');
+    if(new Set(categories.map(c=>c.name.trim().toLocaleLowerCase('fa-IR'))).size!==categories.length)
+      return setError('نام دسته‌ها نباید تکراری باشد.');
+    if(totalManual<1||(remaining!==null&&totalManual>remaining))
+      return setError('تعداد آیتم‌ها بیشتر از ظرفیت اشتراک است.');
+    setError('');setStep('items');
+  }
+  if(!open)return <button className="empty-menu-launcher" onClick={()=>setOpen(true)}><span className="material-symbols-outlined">auto_awesome</span><b>منوی انتخاب‌شده خالی است</b><small>راهنمای ساخت منو را باز کن</small></button>;
+
+  return <div className="menu-wizard-backdrop" role="dialog" aria-modal="true" aria-labelledby="menu-wizard-title">
+    <section className="menu-wizard">
+      <button type="button" className="menu-wizard-close" aria-label="بستن" onClick={()=>setOpen(false)}>×</button>
+      {step==='welcome'&&<>
+        <div className="wizard-mark"><span className="material-symbols-outlined">restaurant_menu</span></div>
+        <span className="wizard-kicker">منوساز میزاتو · مناسب کسب‌وکارهای گوناگون</span>
+        <h1 id="menu-wizard-title">این منو برای چه بخشی است؟</h1>
+        <p>هر کسب‌وکار می‌تواند چند منوی مستقل با نام متفاوت داشته باشد؛ مثل منوی رستوران، کافه، قلیان یا روم‌سرویس هتل.</p>
+        <div className="wizard-kind-grid">{MENU_KINDS.map(k=><button type="button" key={k.id} className={kind===k.id?'selected':''} onClick={()=>chooseKind(k.id)}><span className="material-symbols-outlined">{k.icon}</span><b>{k.title}</b><small>{k.hint}</small></button>)}</div>
+        <label className="wizard-field">نام همین منو<input aria-label="نام منو" value={menuName} maxLength={60} onChange={e=>setMenuName(e.target.value)} placeholder={defaultMenuName(kind)}/></label>
+        <p className="wizard-catalog-info">{templates.length} دسته · {totalAvailable} آیتم پیشنهادی قابل انتخاب. فقط آیتم‌هایی که انتخاب می‌کنی ساخته می‌شوند.</p>
+        <div className="wizard-actions">
+          <button type="button" className="wizard-primary" disabled={busy||!capabilities||remaining===0} onClick={()=>finish(templates.map(g=>({category:g.name,items:g.items.filter(n=>defaultKeys.includes(selectionKey(g.name,n)))})))}>{busy?'در حال ساخت…':`ساخت نمونه پیشنهادی (${defaultKeys.length} آیتم)`}</button>
+          <button type="button" className="wizard-secondary" onClick={()=>{setError('');setStep('catalog');}}>انتخاب از فهرست کامل غذاها و خدمات</button>
+          <button type="button" className="wizard-secondary" onClick={()=>{setError('');setStep('categories');}}>ساخت کاملاً دستی</button>
+        </div>
+      </>}
+      {step==='catalog'&&<>
+        <span className="wizard-kicker">فهرست کامل · {MENU_KINDS.find(k=>k.id===kind)?.title}</span>
+        <h1 id="menu-wizard-title">چه آیتم‌هایی در «{menuName}» باشند؟</h1>
+        <p>هر دسته را باز و آیتم‌های دلخواه را انتخاب کن. قیمت‌ها صفر و آیتم‌ها تا تکمیل اطلاعات، ناموجود هستند.</p>
+        <div className="wizard-catalog-controls"><strong>{chosenCount} انتخاب شده {remaining===null?'':`· ظرفیت خالی: ${remaining}`}</strong><button type="button" onClick={()=>setSelected(defaultKeys)}>بازگشت به انتخاب پیشنهادی</button><button type="button" onClick={()=>setSelected([])}>لغو همه</button></div>
+        <div className="wizard-catalog-list">
+          {templates.map((group,i)=>{
+            const groupKeys=group.items.map(n=>selectionKey(group.name,n));
+            const groupCount=groupKeys.filter(k=>selected.includes(k)).length;
+            return <details key={group.name} open={i===0?true:undefined}>
+              <summary><b>{group.name}</b><small>{groupCount} از {group.items.length} انتخاب شده</small></summary>
+              <button type="button" className="wizard-select-category" onClick={()=>toggleGroup(group.name,group.items)}>{groupCount===group.items.length?'برداشتن انتخاب همه':'انتخاب همه این دسته'}</button>
+              <div className="wizard-catalog-items">{group.items.map(name=>{
+                const key=selectionKey(group.name,name);
+                return <label key={key} className="wizard-catalog-item">
+                  <input type="checkbox" checked={selected.includes(key)} onChange={()=>toggleItem(key)}/>
+                  <img loading="lazy" src={displayImagePath(suggestedMenuImage(name,group.name,kind))} alt="" />
+                  <span>{name}</span>
+                </label>;
+              })}</div>
+            </details>;
+          })}
+        </div>
+        <div className="wizard-actions">
+          <button type="button" className="wizard-primary" disabled={busy||chosenCount===0||!capabilities||(remaining!==null&&chosenCount>remaining)} onClick={()=>finish(selectedGroups)}>{busy?'در حال ذخیره…':`ساخت و ذخیره ${chosenCount} آیتم`}</button>
+          <button type="button" className="wizard-secondary" onClick={()=>setStep('welcome')}>بازگشت</button>
+        </div>
+      </>}
+      {step==='categories'&&<>
+        <span className="wizard-kicker">ساخت دستی · مرحله ۱ از ۲</span>
+        <h1 id="menu-wizard-title">دسته‌های اختصاصی منو</h1>
+        <label className="wizard-field">نام منو<input value={menuName} maxLength={60} onChange={e=>setMenuName(e.target.value)}/></label>
+        <label className="wizard-field">نوع منو<select value={kind} onChange={e=>chooseKind(e.target.value as MenuKind)}>{MENU_KINDS.map(k=><option value={k.id} key={k.id}>{k.title}</option>)}</select></label>
+        <div className="wizard-category-list">{categories.map((c,i)=><div key={c.id}>
+          <label>نام دسته<input value={c.name} maxLength={40} placeholder={i===0?'مثلاً غذای اصلی':'مثلاً نوشیدنی'} onChange={e=>updateCategory(c.id,{name:e.target.value})}/></label>
+          <label>تعداد آیتم<input type="number" min="1" max="20" value={c.count} onChange={e=>updateCategory(c.id,{count:Math.max(1,Math.min(20,Number(e.target.value)||1))})}/></label>
+          {categories.length>1&&<button type="button" aria-label="حذف دسته" onClick={()=>setCategories(x=>x.filter(y=>y.id!==c.id))}>×</button>}
+        </div>)}</div>
+        <div className="wizard-total"><span>{totalManual} آیتم {remaining===null?'· ظرفیت نامحدود':`از ${remaining} جای خالی`}</span><button type="button" onClick={addCategory} disabled={categories.length>=100||(remaining!==null&&totalManual>=remaining)}>＋ افزودن دسته</button></div>
+        <div className="wizard-actions"><button type="button" className="wizard-primary" onClick={goToItems}>مرحله بعد: نام آیتم‌ها</button><button type="button" className="wizard-secondary" onClick={()=>setStep('welcome')}>بازگشت</button></div>
+      </>}
+      {step==='items'&&<>
+        <span className="wizard-kicker">ساخت دستی · مرحله ۲ از ۲</span>
+        <h1 id="menu-wizard-title">نام آیتم‌های «{menuName}»</h1>
+        <p>فیلدهای خالی وارد منو نمی‌شوند. بعداً قیمت، توضیح و عکس را از مدیریت منو تکمیل کن.</p>
+        <div className="wizard-items">{categories.map(c=><fieldset key={c.id}><legend>{c.name}</legend>{c.items.map((name,i)=><input key={i} value={name} maxLength={60} placeholder={`${c.name} ${i+1}`} onChange={e=>updateCategory(c.id,{items:c.items.map((v,j)=>j===i?e.target.value:v)})}/>)}</fieldset>)}</div>
+        <div className="wizard-actions"><button type="button" className="wizard-primary" disabled={busy||!capabilities||categories.every(c=>c.items.every(x=>!x.trim()))} onClick={()=>finish(categories.map(c=>({category:c.name,items:c.items})))}>{busy?'در حال ذخیره…':'ساخت و ذخیره منو'}</button><button type="button" className="wizard-secondary" onClick={()=>setStep('categories')}>بازگشت</button></div>
+      </>}
+      {error&&<p className="wizard-error" role="alert">{error}</p>}
+      {!capabilities&&<button type="button" className="wizard-secondary" disabled={loadingCapabilities} onClick={loadCapabilities}>{loadingCapabilities?'در حال دریافت ظرفیت…':'تلاش مجدد برای دریافت ظرفیت اشتراک'}</button>}
+    </section>
+  </div>;
 }
