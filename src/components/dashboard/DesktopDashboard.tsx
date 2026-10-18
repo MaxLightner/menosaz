@@ -1,3 +1,4 @@
+import {ProductPhotoButton} from '../common/ProductPhotoButton';
 import {BrandLogo} from '../common/BrandLogo';
 import {ProductPriceEditor} from './ProductPriceEditor';
 import {EditProductImage} from '../modals/EditProductImage';
@@ -1240,9 +1241,7 @@ export const DesktopDashboard: React.FC = () => {
                       <tr key={prod.id} className="hover:bg-[#EEF2E8]/30 transition-colors">
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-10 h-10 rounded-lg border border-[#DBE2D5] overflow-hidden flex-shrink-0 bg-stone-100">
-                              <img onClick={()=>setEditingImage(prod)} src={localProductImage(prod)} alt={prod.name} className="w-full h-full object-cover" />
-                            </div>
+                            <ProductPhotoButton size="desktop" product={prod} onEdit={()=>setEditingImage(prod)}/>
                             <div>
                               <span className="font-bold text-[#29372E] block">{prod.name}</span>{menus.length>1&&<select aria-label={'انتقال به منوی دیگر: '+prod.name} value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value).catch(err=>showToast(err.message))}>{menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
                               <span className="text-[11px] text-[#506354] line-clamp-1">{prod.description}</span>
@@ -1269,7 +1268,7 @@ export const DesktopDashboard: React.FC = () => {
                             </span>
                           </label>
                         </td>
-                        <td className="py-2.5 px-3 text-left"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>{!menus.some(m=>m.id===(prod.menuId||'main')&&m.name==='آرشیو آیتم‌های حذف‌شده')&&<button type="button" className="text-xs text-red-700 border border-red-200 rounded-lg px-2 py-1" title="انتقال به آرشیو خصوصی" disabled={archivingId===prod.id} aria-label={'حذف '+prod.name+' از منو'} onClick={()=>removeProductFromMenu(prod)}>{archivingId===prod.id?'در حال حذف…':'حذف'}</button>}
+                        <td className="py-2.5 px-3 text-left">{!menus.some(m=>m.id===(prod.menuId||'main')&&m.name==='آرشیو آیتم‌های حذف‌شده')&&<button type="button" className="text-xs text-red-700 border border-red-200 rounded-lg px-2 py-1" title="انتقال به آرشیو خصوصی" disabled={archivingId===prod.id} aria-label={'حذف '+prod.name+' از منو'} onClick={()=>removeProductFromMenu(prod)}>{archivingId===prod.id?'در حال حذف…':'حذف'}</button>}
                           <button 
                             onClick={() => {
                               setSelectedTableNumber(4);
