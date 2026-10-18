@@ -64,6 +64,14 @@ export function suggestedMenuImage(name:string,category='',kind='restaurant'){
  if(/دسر|شیرینی/.test(c))return CATEGORY_ILLUSTRATIONS.breakfast;
  return CATEGORY_ILLUSTRATIONS.food;
 }
+// The catalog API currently accepts only original bundled image paths, not generated tiles.
+export function sourcePhotoForItem(name:string,category='',kind='restaurant'){
+ const tile=suggestedMenuImage(name,category,kind);
+ const match=/^\/menu-tiles\/([a-z0-9-]+)\.webp$/.exec(tile);
+ if(!match)return '';
+ const file=match[1]+'.webp';
+ return /^(iran|food)-\d+$/.test(match[1])?'/media/'+file:'/menu-assets/'+file;
+}
 export function productDisplayImage(p:Pick<Product,'name'|'imageUrl'|'customImage'>,category=''){
  const url=p.imageUrl||'';
  if(p.customImage && url)return displayImagePath(url);
