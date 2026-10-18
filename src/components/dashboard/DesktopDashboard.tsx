@@ -48,7 +48,7 @@ export const DesktopDashboard: React.FC = () => {
   const point = servicePoints.find(p=>p.tableNumber===selectedHubTable);
   const currentTableUrl = point?.qrCodeUrl||`${baseUrl}/?view=customer&business=${business.id}&table=${selectedHubTable}`;
   const currentWaiterUrl = `${baseUrl}/?view=waiter&business=${encodeURIComponent(business.id)}`;
-  const currentKitchenUrl = `${baseUrl}/?view=kitchen`;
+  const currentKitchenUrl = `${baseUrl}/?view=kitchen&business=${encodeURIComponent(business.id)}`;
 
   useEffect(() => {
     // 1. Table QR
