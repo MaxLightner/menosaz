@@ -1,3 +1,4 @@
+import {catalogImagePath} from '../lib/imagePath';
 import {api} from './backend';
 import type {MenuDefinition} from '../types';
 
@@ -10,7 +11,7 @@ export function commandBody<T extends object>(body:T,pending:{current:PendingCom
  return {...body,requestId:pending.current.requestId};
 }
 export async function buildMenu(body:MenuDraft,pending:{current:PendingCommand}){
- const result=await api<{menu:MenuDefinition;productsCreated:number}>('/menus/build',commandBody(body,pending));
+ const result=await api<{menu:MenuDefinition;productsCreated:number}>('/menus/build',commandBody({...body,categories:body.categories.map(c=>({...c,items:c.items.map(p=>({...p,...(p.imageUrl?{imageUrl:catalogImagePath(p.imageUrl)}:{})}))}))},pending));
  pending.current=null;
  window.dispatchEvent(new Event('workspace-auth'));
  return result;

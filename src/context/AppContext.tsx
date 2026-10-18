@@ -1,3 +1,6 @@
+import {catalogImagePath} from '../lib/imagePath';
+import {addCartItem,type CartItem} from '../lib/cart';
+import {viewFromSearch} from '../lib/navigation';
 import {orderAlerts,type AlertSnapshot} from '../lib/orderAlerts';
 import {ensureGuestSession,savedGuestSession,resetGuestSession} from '../services/guestSession';
 import {incomingNotice} from '../lib/notifications';
@@ -20,14 +23,6 @@ import {
 } from '../types';
 import {INITIAL_BUSINESS} from '../services/seedData';
 
-interface CartItem {
-  id: string;
-  product: Product;
-  quantity: number;
-  selectedOptions?: OrderItemOption[];
-  notes?: string;
-  itemTotal: number;
-}
 
 interface AppContextType {
   menuMessage:string;guestSessionClosed:boolean;startNewGuestSession:()=>void;
@@ -88,11 +83,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   function setActiveMenuId(id:string){setMenuId(id); }
   async function createMenu(name:string,kind:string){const clean=name.trim();if(!clean)throw Error('نام منو را وارد کن.');const m=await api<MenuDefinition>('/menus',commandBody({name:clean,kind},pendingMenu));pendingMenu.current=null;setMenus(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setActiveMenuId(m.id);window.dispatchEvent(new Event('workspace-auth'));showToast(`منوی «${m.name}» ساخته شد.`);return m;}
   async function assignProductMenu(id:string,menuId:string){const p=await api<Product>('/products/'+id,{menuId},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));}
-  const [currentView, setCurrentView] = useState<AppView>(() => {
-    const view = new URLSearchParams(window.location.search).get('q')?'customer':new URLSearchParams(window.location.search).get('view') as AppView;
-    return ['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(view) ? view : 'website';
-  });
-  useEffect(()=>{const onSitePop=()=>{const v=new URLSearchParams(window.location.search).get('view') as AppView;if(['website','how','terms','membership','checkout','admin','dashboard-desktop','dashboard-mobile','customer','waiter','kitchen'].includes(v))setCurrentView(v);};window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
+  const [currentView, setCurrentView] = useState<AppView>(()=>viewFromSearch(window.location.search));
+  useEffect(()=>{const onSitePop=()=>setCurrentView(viewFromSearch(window.location.search));window.addEventListener('popstate',onSitePop);return()=>window.removeEventListener('popstate',onSitePop);},[]);
   const [selectedTableNumber, setSelectedTableNumber] = useState<number>(() => {
     const table = Number(new URLSearchParams(window.location.search).get('table'));
     return Number.isInteger(table) && table > 0 ? table : 4;
@@ -199,7 +191,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
   // Add new food item
   const addProduct = async (productData: Omit<Product, 'id' | 'businessId' | 'updatedAt'>): Promise<string> => {
-    if(productData.imageUrl.startsWith('data:')){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:productData.imageUrl});productData={...productData,imageUrl:uploaded.imageUrl,customImage:true};}const p=await api<Product>('/products',{...productData,menuId:activeMenuId});setProducts(prev=>[p,...prev]);return p.id;
+    if(productData.imageUrl.startsWith('data:')){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:productData.imageUrl});productData={...productData,imageUrl:uploaded.imageUrl,customImage:true};}const p=await api<Product>('/products',{...productData,imageUrl:catalogImagePath(productData.imageUrl),menuId:activeMenuId});setProducts(prev=>[p,...prev]);return p.id;
   };
   // Toggle table occupancy
   const toggleTableOccupancy = async (tableNumber: number, isOccupied: boolean) => {
@@ -241,31 +233,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
   };
   // Cart operations
   const addToCart = (product: Product, options?: OrderItemOption[], notes?: string) => {
-    const extraPrice = options ? options.reduce((sum, opt) => sum + opt.extraPrice, 0) : 0;
-    const unitPrice = product.price + extraPrice;
-    const cartItemId = `${product.id}-${options?.map(o => o.optionName).join('-') || 'plain'}`;
-
-    setCart(prev => {
-      const existing = prev.find(item => item.id === cartItemId);
-      if (existing) {
-        return prev.map(item => item.id === cartItemId ? {
-          ...item,
-          quantity: item.quantity + 1,
-          itemTotal: (item.quantity + 1) * unitPrice,
-        } : item);
-      }
-      return [
-        ...prev,
-        {
-          id: cartItemId,
-          product,
-          quantity: 1,
-          selectedOptions: options,
-          notes,
-          itemTotal: unitPrice,
-        }
-      ];
-    });
+    setCart(prev=>addCartItem(prev,product,options,notes));
     showToast(`«${product.name}» به سبد سفارش اضافه شد`);
   };
 

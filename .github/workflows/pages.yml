@@ -36,6 +36,7 @@ jobs:
           pnpm run test:domains
           pnpm run test:notifications
           pnpm run test:billing
+          pnpm run test:customer
       - name: Build public site
         env:
           VITE_PUBLIC_URL: ${{ vars.PUBLIC_SITE_URL || 'https://maxlightner.github.io/menosaz' }}
