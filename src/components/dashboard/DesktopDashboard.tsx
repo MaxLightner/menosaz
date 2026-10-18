@@ -7,6 +7,7 @@ import {MenusManager} from './MenusManager';
 import {usePresentation} from '../../context/PresentationContext';
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
+import {printQrStands} from '../../lib/printQrStands';
 import { useApp } from '../../context/AppContext';
 import { AddDishModal } from '../modals/AddDishModal';
 import { AllQRAccessModal } from '../modals/AllQRAccessModal';
@@ -72,6 +73,8 @@ export const DesktopDashboard: React.FC = () => {
       color: { dark: '#B45309', light: '#FFFFFF' }
     }).then(setHubKitchenQrUrl).catch(console.error);
   }, [currentTableUrl, currentWaiterUrl, currentKitchenUrl, selectedHubTable]);
+
+  const printAllTableStands=()=>printQrStands(servicePoints,business.name,baseUrl,showToast);
 
   // Filtered products for quick editor
   const filteredProducts = products.filter(p => 
@@ -828,14 +831,11 @@ export const DesktopDashboard: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      setAllQrModalTab('tables');
-                      setIsAllQrModalOpen(true);
-                    }}
+                    onClick={printAllTableStands}
                     className="px-4 py-2 bg-[#465B3F] hover:bg-[#51805A] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all"
                   >
                     <span className="material-symbols-outlined text-sm">print</span>
-                    <span>چاپ دسته‌ای استند تمامی ۱۶ میز</span>
+                    <span>چاپ استند تمام میزها</span>
                   </button>
                 </div>
               </div>
@@ -1133,13 +1133,10 @@ export const DesktopDashboard: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => {
-                      setAllQrModalTab('tables');
-                      setIsAllQrModalOpen(true);
-                    }}
+                    onClick={printAllTableStands}
                     className="px-3.5 py-1.5 bg-[#EEF2E8] hover:bg-[#F2DECC] text-[#465B3F] border border-[#F2DECC] rounded-xl text-xs font-bold"
                   >
-                    باز کردن پنجره چاپ دسته‌ای
+                    چاپ دسته‌ای استندهای QR
                   </button>
                 </div>
 
@@ -1287,10 +1284,7 @@ export const DesktopDashboard: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    setAllQrModalTab('tables');
-                    setIsAllQrModalOpen(true);
-                  }}
+                  onClick={printAllTableStands}
                   className="px-3.5 py-1.5 bg-[#465B3F] text-white rounded-xl text-xs font-bold hover:bg-[#51805A]"
                 >
                   چاپ استند QR میزها
