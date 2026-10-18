@@ -277,6 +277,12 @@ export const DesktopDashboard: React.FC = () => {
 
           {/* Quick Header Actions */}
           <div className="flex items-center gap-2">
+            <button type="button" className="px-2 py-1.5 rounded-lg border border-[#DBE2D5] text-xs" onClick={()=>window.history.state?.mizatoView?window.history.back():setCurrentView('website')} title="بازگشت به صفحه قبل">
+              <span className="material-symbols-outlined text-base align-middle">arrow_forward</span> بازگشت
+            </button>
+            <select aria-label="جابجایی بین بخش‌های پنل" value={activeTab} onChange={e=>setActiveTab(e.target.value as typeof activeTab)} className="max-w-36 border border-[#DBE2D5] rounded-lg bg-white text-xs px-2 py-2">
+              <option value="menu">مدیریت منو</option><option value="overview">سفارش‌ها</option><option value="tables">میزها</option><option value="three_apps_qr">QR و اپلیکیشن‌ها</option>
+            </select>
             <button
               onClick={() => {
                 setAllQrModalTab('tables');
