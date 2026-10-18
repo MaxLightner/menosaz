@@ -22,7 +22,7 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
 
   const sampleImages=IMAGE_CHOICES.map(([label,file])=>({
     label,
-    url:/^(iran|food)-\\d+$/.test(file)?'/media/'+file+'.webp':'/menu-assets/'+file+'.webp',
+    url:/^(iran|food)-\d+$/.test(file)?'/media/'+file+'.webp':'/menu-assets/'+file+'.webp',
     preview:'/menu-tiles/'+file+'.webp'
   }));
   const [selectedImage,setSelectedImage]=useState('');
