@@ -1,4 +1,5 @@
 import {catalogImagePath} from '../lib/imagePath';
+import {CLOUD_API} from '../services/cloudConfig';
 import {addCartItem,type CartItem} from '../lib/cart';
 import {viewFromSearch} from '../lib/navigation';
 import {orderAlerts,type AlertSnapshot} from '../lib/orderAlerts';
@@ -217,6 +218,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if(image.startsWith('data:')){
       const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:image});
       imageUrl=uploaded.imageUrl;customImage=true;
+    }else if(/^https:\/\//.test(image)){
+      const address=new URL(image);
+      const storageRoot=new URL(CLOUD_API).origin;
+      if(address.origin!==storageRoot || !address.pathname.startsWith('/storage/v1/object/public/menu-images/'))
+        throw Error('این تصویر از گالری مجاز نیست.');
+      // The server still checks media_assets.business_id for the active restaurant.
+      customImage=true;
     }else if(!/^\/(?:media|menu-assets)\/[a-zA-Z0-9._-]+$/.test(image))
       throw Error('عکس انتخاب‌شده معتبر نیست.');
     const p=await api<Product>('/products/'+id,{imageUrl,customImage},'PATCH');
