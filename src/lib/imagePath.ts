@@ -3,10 +3,10 @@ export function catalogImagePath(url:string,base=import.meta.env?.BASE_URL||'/')
  const prefix=base.replace(/\/$/,'');
  let path=url;
  if(prefix&&path.startsWith(prefix+'/'))path=path.slice(prefix.length);
- path=path.replace(/^\/menosaz\/(?=(?:media|menu-assets)\/)/,'/');
- return /^\/(?:media|menu-assets)\//.test(path)?path:url;
+ path=path.replace(/^\/menosaz\/(?=(?:media|menu-assets|menu-tiles)\/)/,'/');
+ return /^\/(?:media|menu-assets|menu-tiles)\//.test(path)?path:url;
 }
 export function displayImagePath(url:string,base=import.meta.env?.BASE_URL||'/'){
  const path=catalogImagePath(url,base);
- return /^\/(?:media|menu-assets)\//.test(path)?base.replace(/\/?$/,'/')+path.slice(1):url;
+ return /^\/(?:media|menu-assets|menu-tiles)\//.test(path)?base.replace(/\/?$/,'/')+path.slice(1):url;
 }
