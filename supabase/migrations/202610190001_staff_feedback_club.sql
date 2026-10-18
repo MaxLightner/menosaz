@@ -193,9 +193,12 @@ begin
     if current_shift.id is null then raise exception 'شیفت باز وجود ندارد';end if;
     select * into emp from mizato_staff where business_id=bid and user_id=p_uid;
     elapsed=greatest(0,round(extract(epoch from (now()-current_shift.clock_in))/60)::int);
+    -- ISO-style display for Iranian working week: Saturday=1, Friday=7.
+    day_no=((extract(dow from current_shift.clock_in)::int+1)%7)+1;
     if emp.shift_start is not null and emp.shift_end is not null then
       scheduled=(extract(epoch from (emp.shift_end-emp.shift_start))/60)::int;
       if scheduled<=0 then scheduled=scheduled+1440;end if;
+      if array_length(emp.shift_days,1)>0 and not (day_no=any(emp.shift_days)) then scheduled=0;end if;
     else scheduled=null;end if;
     update mizato_staff_shifts set clock_out=now(),
       overtime_minutes=case when scheduled is null then null else greatest(0,elapsed-scheduled)end,
