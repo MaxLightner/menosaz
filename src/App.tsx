@@ -1,3 +1,6 @@
+import {StaffManager} from './components/dashboard/StaffManager';
+import {FeedbackReports} from './components/dashboard/FeedbackReports';
+import {PhoneLogin} from './components/common/PhoneLogin';
 import {BrandLogo} from './components/common/BrandLogo';
 import {NotificationControl} from './components/common/NotificationControl';
 import {SessionReport} from './components/dashboard/SessionReport';
@@ -25,10 +28,11 @@ import {WebsiteContentAdmin} from './components/dashboard/WebsiteContentAdmin';
 const AppContent: React.FC = () => {
   const { currentView, setCurrentView, toastMessage,showToast,servicePoints,hasAnyProducts,isServerConnected,categories,activeMenuId } = useApp();
   const {account,logout,openSample,selectBusiness}=usePresentation();
-  const [inboxOpen,setInboxOpen]=useState(false),[teamOpen,setTeamOpen]=useState(false),[sessionsOpen,setSessionsOpen]=useState(false),[profileDeferred,setProfileDeferred]=useState(false);
+  const [inboxOpen,setInboxOpen]=useState(false),[teamOpen,setTeamOpen]=useState(false),[sessionsOpen,setSessionsOpen]=useState(false),[staffOpen,setStaffOpen]=useState(false),[reportMode,setReportMode]=useState<'feedback'|'club'|null>(null),[profileDeferred,setProfileDeferred]=useState(false);
   useEffect(()=>{const resume=()=>setProfileDeferred(false);window.addEventListener('profile-resume',resume);return()=>window.removeEventListener('profile-resume',resume);},[]);
   useEffect(()=>{setProfileDeferred(false);},[account?.id,account?.phone]);
   const canManage=account?.role==='manager'||account?.role==='admin';
+  const staffBusinessId=new URLSearchParams(window.location.search).get('business')||'';
   useEffect(()=>{if(!account||!['waiter','kitchen'].includes(account.role||''))return;if(['dashboard-desktop','dashboard-mobile','admin','membership','checkout'].includes(currentView)||(currentView==='waiter'&&account.role!=='waiter')||(currentView==='kitchen'&&account.role!=='kitchen'))setCurrentView(accountView(account));},[account?.role,currentView]);
   useEffect(()=>{if(!BACKEND)return;let visitor=sessionStorage.getItem('menosaz-visitor');if(!visitor){visitor=crypto.randomUUID();sessionStorage.setItem('menosaz-visitor',visitor);}const ping=()=>{if(document.visibilityState==='visible')api('/presence',{visitor}).catch(()=>{});};ping();const t=setInterval(ping,60000);document.addEventListener('visibilitychange',ping);return()=>{clearInterval(t);document.removeEventListener('visibilitychange',ping);};},[account?.phone]);
   const [appearanceOpen,setAppearanceOpen]=useState(false);
@@ -42,9 +46,9 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen flex flex-col font-sans relative">
       {/* Test Environment & Role Switcher Bar */}
 
-      {restored&&currentView!=='customer'&&account&&<nav className="manager-utility" aria-label="حساب کارکنان"><BrandLogo compact/><NotificationControl/><span>{account.businessRole==='waiter'?'گارسون':account.businessRole==='kitchen'?'آشپزخانه':'حساب مجموعه'}</span>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}<button onClick={()=>logout()}>خروج از حساب</button></nav>}
+      {restored&&currentView!=='customer'&&account&&<nav className="manager-utility" aria-label="حساب کارکنان"><BrandLogo compact/><NotificationControl/><span>{account.businessRole==='waiter'?(account.name||'گارسون'):account.businessRole==='kitchen'?'آشپزخانه':'حساب مجموعه'}</span>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}<button onClick={()=>logout()}>خروج از حساب</button></nav>}
       {/* Main Viewport */}
-      <div className={manager?"flex-1 manager-shell":"flex-1"}>{manager&&account&&canManage&&<div className="manager-utility"><BrandLogo compact/><span>حساب مجموعه</span><button onClick={()=>setSessionsOpen(true)}>زمان حضور و تخلیه{servicePoints.filter(p=>p.activeSession&&p.activeSession.durationSeconds>=3600).length>0?' · نشست طولانی':''}</button>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}{account.businessRole==='owner'&&<button onClick={()=>setTeamOpen(true)}>دسترسی کارکنان</button>}<button className="manager-subscription-button" onClick={()=>setCurrentView('membership')}><span className="material-symbols-outlined">workspace_premium</span> اشتراک</button><button onClick={()=>setInboxOpen(true)}>پیام‌های پشتیبانی</button><button onClick={()=>setAppearanceOpen(true)}>رنگ و پس‌زمینه منو</button><button onClick={()=>setCurrentView('website')}>صفحه اول سایت</button><button onClick={()=>logout()}>خروج از حساب</button></div>}
+      <div className={manager?"flex-1 manager-shell":"flex-1"}>{manager&&account&&canManage&&<div className="manager-utility"><BrandLogo compact/><span>حساب مجموعه</span><button onClick={()=>setSessionsOpen(true)}>زمان حضور و تخلیه{servicePoints.filter(p=>p.activeSession&&p.activeSession.durationSeconds>=3600).length>0?' · نشست طولانی':''}</button>{(account.memberships?.length||0)>1&&<select aria-label="انتخاب مجموعه" value={account.businessId} onChange={e=>selectBusiness(e.target.value).catch(error=>window.alert(error.message))}>{account.memberships?.map(m=><option key={m.businessId} value={m.businessId}>{m.name}</option>)}</select>}<button onClick={()=>setStaffOpen(true)}>مدیریت گارسون‌ها</button><button onClick={()=>setReportMode('feedback')}>نظرات مشتریان</button><button onClick={()=>setReportMode('club')}>باشگاه مشتریان</button>{account.businessRole==='owner'&&<button onClick={()=>setTeamOpen(true)}>دسترسی کارکنان</button>}<button className="manager-subscription-button" onClick={()=>setCurrentView('membership')}><span className="material-symbols-outlined">workspace_premium</span> اشتراک</button><button onClick={()=>setInboxOpen(true)}>پیام‌های پشتیبانی</button><button onClick={()=>setAppearanceOpen(true)}>رنگ و پس‌زمینه منو</button><button onClick={()=>setCurrentView('website')}>صفحه اول سایت</button><button onClick={()=>logout()}>خروج از حساب</button></div>}
         {currentView==='membership'&&(account?<Membership/>:<WebsiteView/>)}
         {currentView==='checkout'&&<Checkout/>}
         {currentView === 'website' && <WebsiteView />}
@@ -53,7 +57,7 @@ const AppContent: React.FC = () => {
         {currentView === 'dashboard-desktop' && (account&&canManage?(mobileManager?<MobileDashboard />:<DesktopDashboard />):<WebsiteView />)}
         {currentView === 'dashboard-mobile' && (account&&canManage?(<MobileDashboard />):<WebsiteView />)}
         {currentView === 'customer' && <CustomerApp />}
-        {currentView === 'waiter' && (account?<WaiterApp />:<WebsiteView />)}
+        {currentView === 'waiter' && (account?.businessRole==='waiter'&&(!staffBusinessId||account.businessId===staffBusinessId)?<WaiterApp />:account?<section className="staff-entry-screen"><h2>ورود گارسون</h2><p>برای ورود به پنل گارسون همین مجموعه، ابتدا از حساب فعلی خارج شوید.</p><button className="staff-primary" onClick={()=>logout()}>خروج و ورود با شماره گارسون</button></section>:<section className="staff-entry-screen"><h2>ورود گارسون به رستوران</h2>{staffBusinessId?<PhoneLogin staffBusinessId={staffBusinessId} onDone={()=>{}}/>:<p>لینک ورود گارسون را از QR مدیر رستوران باز کنید.</p>}</section>)}
         {currentView === 'kitchen' && (account?<KitchenKDSApp />:<WebsiteView />)}
       </div>
 
@@ -61,6 +65,8 @@ const AppContent: React.FC = () => {
       {account?.needsProfile&&currentView!=='customer'&&!profileDeferred&&<CompleteProfile onClose={()=>setProfileDeferred(true)}/>}
       {account?.needsProfile&&currentView!=='customer'&&profileDeferred&&<div className="profile-resume"><button className="staff-primary" onClick={()=>setProfileDeferred(false)}>ادامهٔ تکمیل حساب</button></div>}
       {sessionsOpen&&canManage&&<OrderDialog title="نشست‌ها و زمان حضور" onClose={()=>setSessionsOpen(false)}><SessionReport/></OrderDialog>}
+      {staffOpen&&canManage&&<OrderDialog title="مدیریت گارسون‌ها" onClose={()=>setStaffOpen(false)}><StaffManager/></OrderDialog>}
+      {reportMode&&canManage&&<OrderDialog title={reportMode==='feedback'?'ارزیابی مشتریان':'باشگاه مشتریان'} onClose={()=>setReportMode(null)}><FeedbackReports mode={reportMode}/></OrderDialog>}
       {teamOpen&&account?.businessRole==='owner'&&<OrderDialog title="دسترسی کارکنان" onClose={()=>setTeamOpen(false)}><TeamAccess key={account.businessId}/></OrderDialog>}
       {appearanceOpen&&account&&<OrderDialog title="ظاهر منوی مشتری" onClose={()=>setAppearanceOpen(false)}><MenuAppearance onPreview={()=>setAppearanceOpen(false)} /></OrderDialog>}
       {manager&&account&&canManage&&!account.needsProfile&&isServerConnected&&!hasAnyProducts&&categories.length===0&&<MenuSetupWizard key={activeMenuId}/>}
