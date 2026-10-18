@@ -14,6 +14,7 @@ export const MobileDashboard: React.FC = () => {
     business,menus,assignProductMenu, 
     products, 
     toggleProductAvailability,
+    archiveProduct,
     orders, 
     servicePoints,
     setSelectedTableNumber,
@@ -28,6 +29,14 @@ export const MobileDashboard: React.FC = () => {
   const [isAddDishModalOpen, setIsAddDishModalOpen] = useState(false);
   const [selectedQrTable, setSelectedQrTable] = useState(4);
 
+  const [archivingId,setArchivingId]=useState<string|null>(null);
+  async function removeProductFromMenu(product:Product){
+    if(!window.confirm('«'+product.name+'» از منوی مشتری حذف و به آرشیو خصوصی منتقل شود؟'))return;
+    setArchivingId(product.id);
+    try{await archiveProduct(product.id);}
+    catch(error){showToast((error as Error).message||'حذف از منو انجام نشد.');}
+    finally{setArchivingId(null);}
+  }
   const pendingOrders = orders.filter(o => o.status === 'pending_waiter');
   const occupiedCount = servicePoints.filter(sp => sp.isOccupied).length;
   const outOfStockCount = products.filter(p => !p.isAvailable).length;
@@ -431,7 +440,7 @@ export const MobileDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
+                    <div className="flex items-center gap-2 shrink-0"><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>{!menus.some(m=>m.id===(prod.menuId||'main')&&m.name==='آرشیو آیتم‌های حذف‌شده')&&<button type="button" className="text-xs text-red-700 border border-red-200 rounded-lg px-2 py-1" title="انتقال به آرشیو خصوصی" disabled={archivingId===prod.id} aria-label={'حذف '+prod.name+' از منو'} onClick={()=>removeProductFromMenu(prod)}>{archivingId===prod.id?'در حال حذف…':'حذف'}</button>}
                       <label className="inline-flex items-center cursor-pointer relative">
                         <input 
                           type="checkbox" 
