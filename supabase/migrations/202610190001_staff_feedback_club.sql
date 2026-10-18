@@ -111,7 +111,7 @@ end $$;
 
 create function public.mizato_staff_api(p_path text,p_body jsonb,p_uid uuid)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare bid text; role_name text; phone text; emp mizato_staff;
+declare bid text; role_name text; normalized_phone text; emp mizato_staff;
  action text; current_shift mizato_staff_shifts; elapsed int; scheduled int; result jsonb; day_no int;
 begin
  if p_uid is null then return jsonb_build_object('status',401,'data',jsonb_build_object('error','ابتدا وارد حساب شو'));end if;
@@ -124,7 +124,7 @@ begin
  end if;
 
  if p_path='/staff/save' then
-  phone=mizato_phone(p_body->>'phone');
+  normalized_phone=mizato_phone(p_body->>'phone');
   if length(trim(coalesce(p_body->>'name',''))) not between 2 and 100 then raise exception 'نام گارسون را وارد کن';end if;
   if p_body ? 'days' and jsonb_typeof(p_body->'days')<>'array' then raise exception 'روزهای کاری معتبر نیست';end if;
   if length(coalesce(p_body->>'start',''))>0 and coalesce(p_body->>'start','') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then raise exception 'ساعت شروع معتبر نیست';end if;
@@ -132,13 +132,13 @@ begin
   if (p_body->>'status') not in ('active','disabled') then raise exception 'وضعیت گارسون معتبر نیست';end if;
   if ((nullif(p_body->>'start','') is null) <> (nullif(p_body->>'end','') is null)) then raise exception 'ساعت شروع و پایان باید هر دو وارد شوند';end if;
   insert into mizato_staff(business_id,phone,name,role,status,shift_days,shift_start,shift_end,approved_by)
-  values(bid,phone,trim(p_body->>'name'),'waiter',p_body->>'status',
+  values(bid,normalized_phone,trim(p_body->>'name'),'waiter',p_body->>'status',
    coalesce((select array_agg(distinct d::int order by d::int) from jsonb_array_elements_text(coalesce(p_body->'days','[]')) d where d::int between 1 and 7),'{}'::int[]),
    nullif(p_body->>'start','')::time,nullif(p_body->>'end','')::time,p_uid)
   on conflict(business_id,phone) do update set
    name=excluded.name,status=excluded.status,shift_days=excluded.shift_days,
    shift_start=excluded.shift_start,shift_end=excluded.shift_end,updated_at=now();
-  select * into emp from mizato_staff where business_id=bid and mizato_staff.phone=phone;
+  select * into emp from mizato_staff where business_id=bid and mizato_staff.phone=normalized_phone;
   if emp.user_id is not null then
    update business_memberships set status=emp.status,updated_at=now()
     where business_id=bid and user_id=emp.user_id and role='waiter';
