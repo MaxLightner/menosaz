@@ -217,7 +217,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if(image.startsWith('data:')){
       const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:image});
       imageUrl=uploaded.imageUrl;customImage=true;
-    }else if(!/^\\/(?:media|menu-assets)\\/[a-zA-Z0-9._-]+$/.test(image))
+    }else if(!/^\/(?:media|menu-assets)\/[a-zA-Z0-9._-]+$/.test(image))
       throw Error('عکس انتخاب‌شده معتبر نیست.');
     const p=await api<Product>('/products/'+id,{imageUrl,customImage},'PATCH');
     setProducts(prev=>prev.map(v=>v.id===id?p:v));
