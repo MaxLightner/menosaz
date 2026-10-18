@@ -1,6 +1,7 @@
 import {PointMenus} from '../dashboard/PointMenus';
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import {printQrStands} from '../../lib/printQrStands';
 import {usePresentation} from '../../context/PresentationContext';
 import { useApp } from '../../context/AppContext';
 
@@ -192,6 +193,10 @@ export const AllQRAccessModal: React.FC<AllQRAccessModalProps> = ({
                 })}
               </div>
             </div>
+
+            <button type="button" className="staff-primary" onClick={()=>printQrStands(servicePoints,business.name,baseUrl,showToast)}>
+              <span className="material-symbols-outlined" aria-hidden="true">print</span> چاپ استندهای تمام میزها
+            </button>
 
             {/* QR Card */}
             <div className="bg-white border-2 border-dashed border-[#E8DFD3] rounded-3xl p-5 flex flex-col sm:flex-row items-center gap-5">
