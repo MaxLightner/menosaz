@@ -1,11 +1,13 @@
 import {RemoveProduct} from './RemoveProduct';
 import {PointsPanel} from './PointsPanel';
+import {ProductPhotoButton} from '../common/ProductPhotoButton';
+import {ProductPriceEditor} from './ProductPriceEditor';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
 import {MenusManager} from './MenusManager';
 import {usePresentation} from '../../context/PresentationContext';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AllQRAccessModal } from '../modals/AllQRAccessModal';
 import { AddDishModal } from '../modals/AddDishModal';
@@ -14,23 +16,21 @@ export const MobileDashboard: React.FC = () => {
   const { 
     business,menus,assignProductMenu, 
     products, 
-    updateProductPrice, 
     toggleProductAvailability,
     orders, 
-    updateOrderStatus, 
-    updateDeliveryStatus, 
-    updatePaymentStatus,
     servicePoints,
     setSelectedTableNumber,
-    setCurrentView
+    setCurrentView,showToast
   } = useApp();
   const {openSample}=usePresentation();
 
   const [editingImage,setEditingImage]=useState<Product|null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'tables' | 'menu' | 'settings'>('menu');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'tables' | 'menu' | 'settings'>(()=>{try{const saved=sessionStorage.getItem('mizato-mobile-panel');return ["overview","orders","tables","menu","settings"].includes(saved||'')?saved as 'overview' | 'orders' | 'tables' | 'menu' | 'settings':'menu';}catch{return 'menu';}});
+  useEffect(()=>{try{sessionStorage.setItem('mizato-mobile-panel',activeTab);}catch{}},[activeTab]);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isAddDishModalOpen, setIsAddDishModalOpen] = useState(false);
   const [selectedQrTable, setSelectedQrTable] = useState(4);
+
 
   const pendingOrders = orders.filter(o => o.status === 'pending_waiter');
   const occupiedCount = servicePoints.filter(sp => sp.isOccupied).length;
@@ -64,6 +64,7 @@ export const MobileDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1">
+            <button type="button" title="بازگشت به صفحه قبل" aria-label="بازگشت" className="p-1.5 rounded-lg text-[#506354]" onClick={()=>window.history.state?.mizatoView?window.history.back():setCurrentView('website')}><span className="material-symbols-outlined text-[20px]">arrow_forward</span></button>
             <button 
               onClick={() => {
                 setSelectedQrTable(4);
@@ -83,6 +84,8 @@ export const MobileDashboard: React.FC = () => {
             </button>
           </div>
         </header>
+
+        <div className="px-4 pt-2"><label className="flex items-center gap-2 text-xs text-[#506354]">بخش پنل <select aria-label="انتخاب بخش پنل موبایل" className="flex-1 border border-[#DBE2D5] rounded-lg bg-white p-2" value={activeTab} onChange={e=>setActiveTab(e.target.value as typeof activeTab)}><option value="menu">منو و قیمت‌ها</option><option value="overview">نمای کلی</option><option value="orders">سفارش‌ها</option><option value="tables">میزها</option><option value="settings">تنظیمات</option></select></label></div>
 
         {/* 2. MAIN MOBILE CONTENT */}
         <main className="flex-1 px-3.5 pt-3 space-y-3.5">
@@ -332,39 +335,7 @@ export const MobileDashboard: React.FC = () => {
                       </div>
 
                       {/* Actions */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        {isPending ? (
-                          <button 
-                            onClick={() => updateOrderStatus(order.id, 'cooking')}
-                            className="w-full bg-[#51805A] hover:bg-[#51805A] text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">soup_kitchen</span>
-                            <span>تأیید و ارسال به آشپزخانه</span>
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => updateDeliveryStatus(order.id, isDelivered ? 'pending' : 'delivered')}
-                            className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
-                              isDelivered ? 'bg-[#EAF2EC] text-[#465B3F]' : 'bg-[#465B3F] text-white'
-                            }`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">room_service</span>
-                            <span>{isDelivered ? 'تحویل شد' : 'ثبت تحویل به میز'}</span>
-                          </button>
-                        )}
-
-                        <button 
-                          onClick={() => updatePaymentStatus(order.id, isPaid ? 'unpaid' : 'paid_pos')}
-                          className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border transition-all ${
-                            isPaid 
-                              ? 'bg-emerald-50 text-emerald-900 border-emerald-300' 
-                              : 'bg-[#EEF2E8] text-[#29372E] border-[#DBE2D5]'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">payments</span>
-                          <span>{isPaid ? 'تسویه شده' : 'ثبت تسویه وجه'}</span>
-                        </button>
-                      </div>
+                      <p className="text-xs text-[#506354]">دریافت وجه، ارسال به آشپزخانه و تحویل را گارسون از حساب خودش ثبت می‌کند.</p>
                     </div>
                   );
                 })}
@@ -415,18 +386,20 @@ export const MobileDashboard: React.FC = () => {
 
               <div className="space-y-2">{!products.length&&<p className="p-4 text-sm">این منو هنوز آیتم ندارد؛ اولین غذا یا نوشیدنی را اضافه کن.</p>}
                 {products.map(prod => (
-                  <div key={prod.id} className="p-3 bg-[#FFFFFF] border border-[#DBE2D5] rounded-xl flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <img onClick={()=>setEditingImage(prod)} src={localProductImage(prod)} alt={prod.name} className="w-11 h-11 object-cover rounded-lg shrink-0 border" />
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm text-[#29372E] whitespace-normal">{prod.name}</div>{menus.length>1&&<select aria-label={'انتقال به منوی دیگر: '+prod.name} value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value)}>{menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
-                        <div className="text-[11px] text-[#51805A] font-bold mt-0.5">
-                          {prod.price.toLocaleString('fa-IR')} تومان
-                        </div>
+                  <article key={prod.id} className="mizato-mobile-product-card">
+                    <div className="mizato-mobile-product-head">
+                      <ProductPhotoButton product={prod} onEdit={()=>setEditingImage(prod)} />
+                      <div className="mizato-mobile-product-title">
+                        <b>{prod.name}</b>
+                        {menus.length>1&&<select className="mizato-mobile-product-menu" aria-label={'انتقال به منوی دیگر: '+prod.name}
+                          value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value).catch(err=>showToast(err.message))}>
+                          {menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>}
                       </div>
+                      <RemoveProduct product={prod}/>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0"><RemoveProduct product={prod}/><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
+                    <div className="mizato-mobile-product-footer"><ProductPriceEditor product={prod}/>
                       <label className="inline-flex items-center cursor-pointer">
                         <input 
                           type="checkbox" 
@@ -436,18 +409,8 @@ export const MobileDashboard: React.FC = () => {
                         />
                         <div className="w-7 h-4 bg-stone-300 rounded-full peer peer-checked:bg-emerald-700 relative after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 peer-checked:after:-translate-x-3 transition-all"></div>
                       </label>
-                      <button 
-                        onClick={() => {
-                          const newPrice = prompt(`قیمت جدید برای ${prod.name} (تومان):`, prod.price.toString());
-                          if (newPrice) updateProductPrice(prod.id, Number(newPrice));
-                        }}
-                        className="p-1 text-[#506354] hover:text-[#D35400] bg-[#EEF2E8] rounded"
-                        title="ویرایش قیمت"
-                      >
-                        <span className="material-symbols-outlined text-sm">edit</span>
-                      </button>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             </div>

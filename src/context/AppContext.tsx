@@ -1,3 +1,7 @@
+import {catalogImagePath} from '../lib/imagePath';
+import {CLOUD_API} from '../services/cloudConfig';
+import {addCartItem,type CartItem} from '../lib/cart';
+import {viewFromSearch} from '../lib/navigation';
 import {orderAlerts,type AlertSnapshot} from '../lib/orderAlerts';
 import {ensureGuestSession,savedGuestSession,resetGuestSession} from '../services/guestSession';
 import {incomingNotice} from '../lib/notifications';
@@ -20,14 +24,6 @@ import {
 } from '../types';
 import {INITIAL_BUSINESS} from '../services/seedData';
 
-interface CartItem {
-  id: string;
-  product: Product;
-  quantity: number;
-  selectedOptions?: OrderItemOption[];
-  notes?: string;
-  itemTotal: number;
-}
 
 interface AppContextType {
   syncError:string;lastSyncedAt:number|null;refreshWorkspace:()=>void;
@@ -194,17 +190,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if(['menuPalette','menuPaper','menuBackgroundImage'].some(k=>k in partial)){const menu=await api<MenuDefinition>('/menus/'+activeMenuId,{appearance:partial},'PATCH');setMenus(prev=>prev.map(m=>m.id===menu.id?menu:m));}else setBusiness(await api<Business>('/business',partial,'PATCH'));showToast('تنظیمات ذخیره شد');return;
   };
   // All writes are acknowledged by the same Supabase command API.
-  async function updateProductImage(id:string,dataUrl:string){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl});const p=await api<Product>('/products/'+id,{imageUrl:uploaded.imageUrl,customImage:true},'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));showToast('عکس غذا ذخیره شد');}
+  async function updateProductImage(id:string,image:string){
+    let imageUrl=image,customImage=false;
+    if(image.startsWith('data:')){
+      const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:image});
+      imageUrl=uploaded.imageUrl;customImage=true;
+    }else if(/^https:\/\//.test(image)){
+      const address=new URL(image);
+      const storageRoot=new URL(CLOUD_API).origin;
+      if(address.origin!==storageRoot || !address.pathname.startsWith('/storage/v1/object/public/menu-images/'))
+        throw Error('این تصویر از گالری مجاز نیست.');
+      // The server still checks media_assets.business_id for the active restaurant.
+      customImage=true;
+    }else if(!/^\/(?:media|menu-assets)\/[a-zA-Z0-9._-]+$/.test(image))
+      throw Error('عکس انتخاب‌شده معتبر نیست.');
+    const p=await api<Product>('/products/'+id,{imageUrl,customImage},'PATCH');
+    setProducts(prev=>prev.map(v=>v.id===id?p:v));
+    showToast('تصویر آیتم ذخیره شد');
+  }
   const updateProductPrice = async (productId: string, newPrice: number) => {
     const p=await api<Product>('/products/'+productId,{price:newPrice},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));showToast('قیمت ذخیره شد');return;
   };
   // Toggle availability (out of stock / in stock)
   const toggleProductAvailability = async (productId: string, isAvailable: boolean, reason?: string) => {
-    const p=await api<Product>('/products/'+productId,{isAvailable,outOfStockReason:reason||''},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));return;
+    try{const p=await api<Product>('/products/'+productId,{isAvailable,outOfStockReason:reason||''},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));showToast('موجودی ذخیره شد');}catch(e){showToast((e as Error).message||'موجودی ذخیره نشد');}return;
   };
   // Add new food item
   const addProduct = async (productData: Omit<Product, 'id' | 'businessId' | 'updatedAt'>): Promise<string> => {
-    if(productData.imageUrl.startsWith('data:')){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:productData.imageUrl});productData={...productData,imageUrl:uploaded.imageUrl,customImage:true};}const p=await api<Product>('/products',{...productData,menuId:activeMenuId});setProducts(prev=>[p,...prev]);return p.id;
+    if(productData.imageUrl.startsWith('data:')){const uploaded=await api<{imageUrl:string}>('/product-images',{dataUrl:productData.imageUrl});productData={...productData,imageUrl:uploaded.imageUrl,customImage:true};}const p=await api<Product>('/products',{...productData,imageUrl:catalogImagePath(productData.imageUrl),menuId:activeMenuId});setProducts(prev=>[p,...prev]);return p.id;
   };
   // Toggle table occupancy
   const toggleTableOccupancy = async (tableNumber: number, isOccupied: boolean) => {
@@ -246,31 +259,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
   };
   // Cart operations
   const addToCart = (product: Product, options?: OrderItemOption[], notes?: string) => {
-    const extraPrice = options ? options.reduce((sum, opt) => sum + opt.extraPrice, 0) : 0;
-    const unitPrice = product.price + extraPrice;
-    const cartItemId = `${product.id}-${options?.map(o => o.optionName).join('-') || 'plain'}`;
-
-    setCart(prev => {
-      const existing = prev.find(item => item.id === cartItemId);
-      if (existing) {
-        return prev.map(item => item.id === cartItemId ? {
-          ...item,
-          quantity: item.quantity + 1,
-          itemTotal: (item.quantity + 1) * unitPrice,
-        } : item);
-      }
-      return [
-        ...prev,
-        {
-          id: cartItemId,
-          product,
-          quantity: 1,
-          selectedOptions: options,
-          notes,
-          itemTotal: unitPrice,
-        }
-      ];
-    });
+    setCart(prev=>addCartItem(prev,product,options,notes));
     showToast(`«${product.name}» به سبد سفارش اضافه شد`);
   };
 
@@ -320,7 +309,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
         business:{...business,...menus.find(m=>m.id===activeMenuId)?.appearance},
         updateBusinessSettings,
         menuMessage,guestSessionClosed,startNewGuestSession,menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
-        hasAnyProducts:products.length>0,
+        hasAnyProducts:products.some(p=>(p.menuId||'main')===activeMenuId),
         products:products.filter(p=>(p.menuId||'main')===activeMenuId),
         updateProductImage,updateProductPrice,
         toggleProductAvailability,

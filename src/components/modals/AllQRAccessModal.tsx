@@ -12,7 +12,7 @@ export function AllQRAccessModal({isOpen,onClose,defaultTab='tables',initialTabl
  const {business,servicePoints,showToast}=useApp();const [tab,setTab]=useState<Tab>(defaultTab),[number,setNumber]=useState(initialTable),[qr,setQr]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [printRows,setPrintRows]=useState<{label:string;image:string}[]>([]);
  const point=servicePoints.find(p=>p.tableNumber===number)||servicePoints[0];
- const url=tab==='tables'?(point?pointUrl(point,business.id):''):`${SITE_URL}/?view=${tab}`;
+ const url=tab==='tables'?(point?pointUrl(point,business.id):''):`${SITE_URL}/?view=${tab}&business=${encodeURIComponent(business.id)}`;
  useEffect(()=>{if(isOpen){setTab(defaultTab);setNumber(initialTable);setError('');setPrintRows([]);}},[isOpen,defaultTab,initialTable]);
  useEffect(()=>{if(!isOpen||!url)return;let cancelled=false;setQr('');image(url).then(value=>{if(!cancelled)setQr(value);}).catch(()=>{if(!cancelled)setError('ساخت QR انجام نشد؛ دوباره تلاش کن.');});return()=>{cancelled=true;};},[url,isOpen]);
  useEffect(()=>{if(!printRows.length)return;let cancelled=false;const run=async()=>{await Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('.qr-print-sheet img')).map(img=>img.decode().catch(()=>{})));if(!cancelled)window.print();};const timer=setTimeout(run,100);return()=>{cancelled=true;clearTimeout(timer);};},[printRows]);

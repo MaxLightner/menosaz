@@ -1,6 +1,8 @@
 import {RemoveProduct} from './RemoveProduct';
 import {PointsPanel} from './PointsPanel';
+import {ProductPhotoButton} from '../common/ProductPhotoButton';
 import {BrandLogo} from '../common/BrandLogo';
+import {ProductPriceEditor} from './ProductPriceEditor';
 import {EditProductImage} from '../modals/EditProductImage';
 import type {Product} from '../../types';
 import {localProductImage} from '../../services/menuPresentation';
@@ -8,6 +10,7 @@ import {MenusManager} from './MenusManager';
 import {usePresentation} from '../../context/PresentationContext';
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
+import {printQrStands} from '../../lib/printQrStands';
 import { useApp } from '../../context/AppContext';
 import { AddDishModal } from '../modals/AddDishModal';
 import { AllQRAccessModal } from '../modals/AllQRAccessModal';
@@ -17,17 +20,14 @@ export const DesktopDashboard: React.FC = () => {
     business,menus,activeMenuId,assignProductMenu, 
     updateBusinessSettings, 
     products, 
-    updateProductPrice, 
     toggleProductAvailability,
     orders, 
-    updateOrderStatus, 
-    updateDeliveryStatus, 
-    updatePaymentStatus,
     servicePoints, 
     toggleTableOccupancy,
     setCurrentView, 
     setSelectedTableNumber,
     isNetworkOnline,
+    isServerConnected,
     showToast
   } = useApp();
   const {openSample}=usePresentation();
@@ -38,7 +38,8 @@ export const DesktopDashboard: React.FC = () => {
   const [selectedHubTable, setSelectedHubTable] = useState<number>(4);
   const [menuSearch, setMenuSearch] = useState('');
   const [editingImage,setEditingImage]=useState<Product|null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'tables' | 'three_apps_qr'>('menu');
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'tables' | 'three_apps_qr'>(()=>{try{const saved=sessionStorage.getItem('mizato-desktop-panel');return ["overview","menu","tables","three_apps_qr"].includes(saved||'')?saved as 'overview' | 'menu' | 'tables' | 'three_apps_qr':'menu';}catch{return 'menu';}});
+  useEffect(()=>{try{sessionStorage.setItem('mizato-desktop-panel',activeTab);}catch{}},[activeTab]);
 
   // Hub QR Codes URLs
   const [hubTableQrUrl, setHubTableQrUrl] = useState<string>('');
@@ -48,8 +49,8 @@ export const DesktopDashboard: React.FC = () => {
   const baseUrl = (import.meta.env.VITE_PUBLIC_URL||window.location.origin).replace(/\/$/,'');
   const point = servicePoints.find(p=>p.tableNumber===selectedHubTable);
   const currentTableUrl = point?.qrCodeUrl||`${baseUrl}/?view=customer&business=${business.id}&table=${selectedHubTable}`;
-  const currentWaiterUrl = `${baseUrl}/?view=waiter`;
-  const currentKitchenUrl = `${baseUrl}/?view=kitchen`;
+  const currentWaiterUrl = `${baseUrl}/?view=waiter&business=${encodeURIComponent(business.id)}`;
+  const currentKitchenUrl = `${baseUrl}/?view=kitchen&business=${encodeURIComponent(business.id)}`;
 
   useEffect(() => {
     // 1. Table QR
@@ -77,6 +78,9 @@ export const DesktopDashboard: React.FC = () => {
     }).then(setHubKitchenQrUrl).catch(console.error);
   }, [currentTableUrl, currentWaiterUrl, currentKitchenUrl, selectedHubTable]);
 
+  const printAllTableStands=()=>printQrStands(servicePoints,business.name,baseUrl,showToast);
+
+
   // Filtered products for quick editor
   const filteredProducts = products.filter(p => 
     menuSearch.trim() === '' || 
@@ -96,9 +100,9 @@ export const DesktopDashboard: React.FC = () => {
 
   const occupiedTablesCount = servicePoints.filter(sp => sp.isOccupied).length;
 
-  const copyLink = (url: string, name: string) => {
-    navigator.clipboard.writeText(url);
-    showToast(`لینک مستقیم ${name} با موفقیت کپی شد`);
+  const copyLink = async (url: string, name: string) => {
+    try { await navigator.clipboard.writeText(url); showToast(`لینک مستقیم ${name} با موفقیت کپی شد`); }
+    catch { showToast('کپی لینک انجام نشد؛ دسترسی کلیپ‌بورد مرورگر را بررسی کن.'); }
   };
 
   return (
@@ -270,13 +274,19 @@ export const DesktopDashboard: React.FC = () => {
             </div>
 
             <div className="hidden lg:flex items-center text-[#506354] text-xs gap-1.5 border-r border-[#DBE2D5] pr-3">
-              <span className="material-symbols-outlined text-[16px] text-emerald-600">cloud_done</span>
-              <span>اتصال بلادرنگ Firebase برقرار است</span>
+              <span className={"material-symbols-outlined text-[16px] "+(isServerConnected?"text-emerald-600":"text-amber-600")}>{isServerConnected?'cloud_done':'cloud_off'}</span>
+              <span>{isServerConnected?'ارتباط با سرور برقرار است':'در انتظار اتصال به سرور'}</span>
             </div>
           </div>
 
           {/* Quick Header Actions */}
           <div className="flex items-center gap-2">
+            <button type="button" className="px-2 py-1.5 rounded-lg border border-[#DBE2D5] text-xs" onClick={()=>window.history.state?.mizatoView?window.history.back():setCurrentView('website')} title="بازگشت به صفحه قبل">
+              <span className="material-symbols-outlined text-base align-middle">arrow_forward</span> بازگشت
+            </button>
+            <select aria-label="جابجایی بین بخش‌های پنل" value={activeTab} onChange={e=>setActiveTab(e.target.value as typeof activeTab)} className="max-w-36 border border-[#DBE2D5] rounded-lg bg-white text-xs px-2 py-2">
+              <option value="menu">مدیریت منو</option><option value="overview">سفارش‌ها</option><option value="tables">میزها</option><option value="three_apps_qr">QR و اپلیکیشن‌ها</option>
+            </select>
             <button
               onClick={() => {
                 setAllQrModalTab('tables');
@@ -544,32 +554,7 @@ export const DesktopDashboard: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {isPending && (
-                              <button
-                                onClick={() => updateOrderStatus(order.id, 'cooking')}
-                                className="px-3 py-1.5 bg-[#465B3F] hover:bg-[#51805A] text-white rounded-xl text-xs font-bold"
-                              >
-                                تأیید به آشپزخانه
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => updateDeliveryStatus(order.id, isDelivered ? 'pending' : 'delivered')}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold ${
-                                isDelivered ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-[#465B3F] text-white'
-                              }`}
-                            >
-                              {isDelivered ? 'تحویل داده شده' : 'ثبت تحویل'}
-                            </button>
-
-                            <button
-                              onClick={() => updatePaymentStatus(order.id, isSettled ? 'unpaid' : 'paid_pos')}
-                              className="px-3 py-1.5 bg-[#F6F7F4] hover:bg-[#EEF2E8] border border-[#DBE2D5] text-[#29372E] rounded-xl text-xs font-bold"
-                            >
-                              {isSettled ? 'تسویه شد ✓' : 'تسویه فاکتور'}
-                            </button>
-                          </div>
+                          <p className="text-xs text-[#506354]">دریافت وجه، ارسال به آشپزخانه و تحویل را گارسون از حساب خودش ثبت می‌کند.</p>
                         </div>
                       </div>
                     );
@@ -623,9 +608,7 @@ export const DesktopDashboard: React.FC = () => {
                       <tr key={prod.id} className="hover:bg-[#EEF2E8]/30 transition-colors">
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-10 h-10 rounded-lg border border-[#DBE2D5] overflow-hidden flex-shrink-0 bg-stone-100">
-                              <img onClick={()=>setEditingImage(prod)} src={localProductImage(prod)} alt={prod.name} className="w-full h-full object-cover" />
-                            </div>
+                            <ProductPhotoButton size="desktop" product={prod} onEdit={()=>setEditingImage(prod)}/>
                             <div>
                               <span className="font-bold text-[#29372E] block">{prod.name}</span>{menus.length>1&&<select aria-label={'انتقال به منوی دیگر: '+prod.name} value={prod.menuId||'main'} onChange={e=>assignProductMenu(prod.id,e.target.value).catch(err=>showToast(err.message))}>{menus.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
                               <span className="text-[11px] text-[#506354] line-clamp-1">{prod.description}</span>
@@ -634,23 +617,17 @@ export const DesktopDashboard: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
-                            <input 
-                              type="number"
-                              step="5000"
-                              value={prod.price}
-                              onChange={(e) => updateProductPrice(prod.id, Number(e.target.value))}
-                              className="w-28 h-8 text-center font-bold border border-[#DBE2D5] rounded-lg bg-white text-[#29372E] text-xs font-mono shadow-xs"
-                            />
+                            <ProductPriceEditor product={prod}/>
                             <span className="text-[10px] text-stone-500">تومان</span>
                           </div>
                         </td>
                         <td className="py-2.5 px-3 text-center">
-                          <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                          <label className="inline-flex items-center gap-1.5 cursor-pointer relative">
                             <input 
                               type="checkbox" 
                               checked={prod.isAvailable}
                               onChange={(e) => toggleProductAvailability(prod.id, e.target.checked)}
-                              className="sr-only peer" 
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0 peer z-10"
                             />
                             <div className="w-7 h-4 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-3 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-700 relative"></div>
                             <span className={`text-[11px] font-bold ${prod.isAvailable ? 'text-emerald-800' : 'text-[#465B3F]'}`}>
@@ -658,7 +635,7 @@ export const DesktopDashboard: React.FC = () => {
                             </span>
                           </label>
                         </td>
-                        <td className="py-2.5 px-3 text-left"><RemoveProduct product={prod}/><button className="manager-photo-edit" aria-label={'ویرایش عکس '+prod.name} onClick={()=>setEditingImage(prod)}>عکس</button>
+                        <td className="py-2.5 px-3 text-left"><RemoveProduct product={prod}/>
                           <button 
                             onClick={() => {
                               setSelectedTableNumber(4);

@@ -13,7 +13,8 @@
     "test:access": "node scripts/test-catalog.mjs --access",
     "test:domains": "node scripts/test-catalog.mjs --platform",
     "test:notifications": "tsx scripts/test-notifications.ts",
-    "test:billing": "tsx scripts/test-billing.mjs"
+    "test:billing": "tsx scripts/test-billing.mjs",
+    "test:customer": "node --import tsx scripts/test-customer-regressions.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
