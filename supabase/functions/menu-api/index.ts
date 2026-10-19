@@ -109,11 +109,12 @@ if(path==='/profile'&&uid){const result=await db.rpc('menu_profile',{p_uid:uid,.
 if(['/product-images','/background-images'].includes(path)&&req.method==='POST'&&uid){
  const workspace=await db.rpc('menu_api_v2',{p_path:'/workspace',p_method:'GET',p_body:{},p_uid:uid});if(workspace.error||workspace.data.status!==200)return reply({error:'دسترسی مجموعه لازم است'},403);
  let image;try{image=productImageData(body.dataUrl,path==='/product-images');}catch(error){return reply({error:error.message},400);}
- const bid=workspace.data.data.business.id,ext=image.mime==='image/jpeg'?'jpg':image.mime==='image/png'?'png':'webp',filename=bid+'/'+crypto.randomUUID()+'.'+ext;
+ const bid=workspace.data.data.business.id,ext=image.mime==='image/jpeg'?'jpg':image.mime==='image/png'?'png':'webp',imageHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',image.bytes))).map(v=>v.toString(16).padStart(2,'0')).join(''),filename=bid+'/'+(path==='/product-images'?'product-':'background-')+imageHash+'.'+ext;
+ const previous=await db.from('media_assets').select('url').eq('business_id',bid).eq('storage_path',filename).limit(1).maybeSingle();if(previous.error)return reply({error:'بررسی تصویر انجام نشد'},503);if(previous.data)return reply({imageUrl:previous.data.url});
  const uploaded=await db.storage.from('menu-images').upload(filename,image.bytes,{contentType:image.mime,upsert:false});if(uploaded.error)return reply({error:'ذخیره عکس انجام نشد'},500);
  const assetUrl=db.storage.from('menu-images').getPublicUrl(filename).data.publicUrl;
  const registered=await db.rpc('catalog_media_register',{bid,asset_id:crypto.randomUUID(),asset_url:assetUrl,storage_path:filename,info:{mime:image.mime,width:image.width,height:image.height,bytes:image.bytes.length,purpose:path==='/product-images'?'product':'background'}});
- if(registered.error){await db.storage.from('menu-images').remove([filename]);return reply({error:'ثبت رسانه انجام نشد؛ دوباره تلاش کن'},500);}return reply(registered.data);
+ if(registered.error){await db.storage.from('menu-images').remove([filename]);return reply({error:registered.error.message?.includes('فضای تصاویر')?'فضای تصاویر مجموعه پر شده است؛ با پشتیبانی تماس بگیر':'ثبت رسانه انجام نشد؛ دوباره تلاش کن'},400);}return reply(registered.data);
 }
 const {data,error}=await db.rpc('menu_api_v2',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});if(error)return reply({error:'خطای پایگاه داده؛ دوباره تلاش کن'},500);return reply(data.data,data.status);
 }catch(error){return reply({error:error?.status?error.message:'درخواست معتبر نیست'},error?.status||400);}});
