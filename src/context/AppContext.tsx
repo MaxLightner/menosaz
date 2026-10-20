@@ -32,6 +32,7 @@ interface AppContextType {
   hasAnyProducts:boolean;
   menus:MenuDefinition[];activeMenuId:string;setActiveMenuId:(id:string)=>void;createMenu:(name:string,kind:string)=>Promise<MenuDefinition>;assignProductMenu:(id:string,menuId:string)=>Promise<void>;
   submitToKitchen:(id:string)=>Promise<void>;
+  startKitchen:(id:string)=>Promise<void>;
   confirmKitchen:(id:string)=>Promise<void>;
   markDelivered:(id:string)=>Promise<void>;
   removeOrderItem:(id:string,itemId:string)=>Promise<void>;
@@ -291,6 +292,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
   const cartTotal = cart.reduce((acc, item) => acc + item.itemTotal, 0);
 
   async function submitToKitchen(id:string){await remoteOrder(id,'send');return;}
+  async function startKitchen(id:string){await remoteOrder(id,'start');return;}
   async function confirmKitchen(id:string){await remoteOrder(id,'confirm');return;}
   async function markDelivered(id:string){await remoteOrder(id,'deliver');return;}
   async function removeOrderItem(id:string,itemId:string){await remoteOrder(id,'remove',itemId);return;}
@@ -303,7 +305,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
       value={{
         syncError,lastSyncedAt,refreshWorkspace,
         categories:categories.filter(c=>!c.menuId||c.menuId===activeMenuId),
-        submitToKitchen,confirmKitchen,markDelivered,removeOrderItem,setItemWaiterNote,setCartNotes,
+        submitToKitchen,startKitchen,confirmKitchen,markDelivered,removeOrderItem,setItemWaiterNote,setCartNotes,
         currentView,
         setCurrentView,
         business:{...business,...menus.find(m=>m.id===activeMenuId)?.appearance},
