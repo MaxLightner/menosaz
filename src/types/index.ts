@@ -112,6 +112,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  kitchenReceivedAt?:string|null;
   deliveredBy?:string|null;
   version?:number;
   menuId?:string;
