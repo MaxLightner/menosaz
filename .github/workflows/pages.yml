@@ -35,6 +35,7 @@ jobs:
           pnpm run lint
           pnpm run test:domains
           pnpm run test:notifications
+          pnpm exec tsx scripts/test-order-rules.mjs
           pnpm run test:billing
           pnpm run test:customer
           pnpm exec tsx scripts/test-menu-library.ts
