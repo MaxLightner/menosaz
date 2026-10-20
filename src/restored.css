@@ -93,3 +93,26 @@
 .mizato-image-editor-actions button{padding:10px 15px;border:1px solid #b8cbb4;border-radius:10px;font-size:13px;font-weight:700}
 .mizato-image-editor-actions button.staff-primary{color:#fff;background:#3d6847;border-color:#3d6847}
 @media(max-width:420px){.mizato-mobile-product-head{gap:8px}.mizato-image-editor-thumbs{grid-template-columns:repeat(3,minmax(0,1fr))}.mizato-photo-button{flex-basis:48px;width:48px;height:48px}}
+
+/* Kitchen KDS: distinct paid/waiting, preparing, and ready queues. */
+.kds-board{padding-bottom:32px}
+.kds-header{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.kds-header h1{flex:1;min-width:140px}
+.kds-counters{display:flex;gap:8px;flex-wrap:wrap}
+.kds-counters span{background:#fff;border:1px solid #dbe5da;border-radius:11px;padding:7px 11px;font-size:12px}
+.kds-counters b{font-size:16px;margin-inline-start:5px}
+.kds-section{margin:18px 0 24px}
+.kds-section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.kds-section-heading h2{font-size:18px;font-weight:800;margin:0}
+.kds-section-heading small{font-size:13px;opacity:.75}
+.kds-section-heading p{font-size:12px;color:#687568;margin:0}
+.kds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:11px;align-items:start}
+.kds-order{min-width:0;border-right:5px solid #cf9d39;display:flex;flex-direction:column;gap:10px}
+.kds-preparing .kds-order{border-right-color:#437aab}
+.kds-ready .kds-order{border-right-color:#40805d;opacity:.87}
+.kds-order-times{display:flex;flex-direction:column;gap:3px;text-align:left;font-size:11px;color:#60716b}
+.kds-order-times time:last-child{font-weight:800;color:#263d31}
+.kds-items{list-style:none;padding:0;margin:0;display:grid;gap:5px}
+.kds-action{width:100%;min-height:48px}
+.kds-ready-message{background:#eef9f1;border-radius:9px;color:#275b3a;padding:10px;margin:0;font-weight:700;font-size:13px;text-align:center}
+.kds-empty{grid-column:1/-1;min-height:55px;padding:14px;margin:0}
