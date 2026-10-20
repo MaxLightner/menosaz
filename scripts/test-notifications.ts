@@ -5,6 +5,10 @@ assert.equal(orderAlerts('waiter',{}, {orders:[pending]}).length,1);
 assert.equal(orderAlerts('waiter',{orders:[pending]},{orders:[pending]}).length,0);
 assert.equal(orderAlerts('kitchen',{orders:[pending]},{orders:[cooking]}).length,1);
 assert.equal(orderAlerts('kitchen',{orders:[cooking]},{orders:[ready]}).length,0);
+assert.equal(orderAlerts('waiter',{orders:[cooking]},{orders:[ready]}).length,1);
+assert.equal(orderAlerts('waiter',{orders:[ready]},{orders:[ready]}).length,0);
+assert.equal(orderAlerts('dashboard-desktop',{orders:[ready]},{orders:[delivered]}).length,1);
+assert.equal(orderAlerts('dashboard-mobile',{orders:[delivered]},{orders:[delivered]}).length,0);
 assert.equal(orderAlerts('customer',{orders:[pending]},{orders:[ready]}).length,1);
 assert.equal(orderAlerts('customer',{orders:[pending]},{orders:[delivered]}).length,1); // ready and delivery can occur between two polls
 assert.equal(orderAlerts('customer',{orders:[ready]},{orders:[delivered]}).length,0);
@@ -16,4 +20,4 @@ const point={label:'میز چهار',activeSession:{id:'s1',durationSeconds:3600
 assert.equal(orderAlerts('waiter',{servicePoints:[{...point,activeSession:{...point.activeSession,durationSeconds:3599}}]},{servicePoints:[point]}).length,1);
 assert.equal(orderAlerts('waiter',{servicePoints:[point]},{servicePoints:[point]}).length,0);
 assert.equal(orderAlerts('customer',{}, {servicePoints:[point]}).length,0);
-console.log('PASS: 14 role/ready/delivery/reminder/sound-trigger checks');
+console.log('PASS: waiter-ready, manager-delivery and existing alert regressions');
