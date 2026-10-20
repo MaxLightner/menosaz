@@ -46,7 +46,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check Pillow==11.3.0
       - name: Build public site
         env:
-          VITE_PUBLIC_URL: ${{ vars.PUBLIC_SITE_URL || 'https://maxlightner.github.io/menosaz' }}
+          VITE_PUBLIC_URL: https://mizato.ir
         run: |
           pnpm run build
           python scripts/build-menu-tiles.py
