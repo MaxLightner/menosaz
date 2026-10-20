@@ -9,6 +9,7 @@ import {localProductImage} from '../../services/menuPresentation';
 import {MenusManager} from './MenusManager';
 import {usePresentation} from '../../context/PresentationContext';
 import React, { useState, useEffect } from 'react';
+import {staffOrderStatus} from '../../lib/orderRules';
 import QRCode from 'qrcode';
 import {printQrStands} from '../../lib/printQrStands';
 import { useApp } from '../../context/AppContext';
@@ -91,7 +92,7 @@ export const DesktopDashboard: React.FC = () => {
   // Active / urgent orders
   const pendingOrders = orders.filter(o => o.status === 'pending_waiter');
   const cookingOrders = orders.filter(o => o.status === 'cooking');
-  const readyOrders = orders.filter(o => o.status === 'ready' || (o.status === 'cooking' && o.deliveryStatus === 'pending'));
+  const readyOrders = orders.filter(o => o.status === 'ready');
 
   // Calculate live daily revenue from all non-cancelled orders
   const todayRevenue = orders
@@ -372,7 +373,7 @@ export const DesktopDashboard: React.FC = () => {
                   <div>
                     <span className="text-xs text-[#506354] font-medium block">تیکت‌های پخت در آشپزخانه</span>
                     <div className="text-xl font-extrabold text-[#B45309] font-mono mt-1">
-                      {cookingOrders.length} <span className="text-xs font-normal text-[#506354]">در حال آماده‌سازی</span>
+                      {cookingOrders.length} <span className="text-xs font-normal text-[#506354]">منتظر آشپزخانه / در حال آماده‌سازی</span>
                     </div>
                     <span className="text-[11px] text-amber-800 font-bold mt-1 inline-block">
                       {readyOrders.length} غذا آماده تحویل به سالن
@@ -494,7 +495,7 @@ export const DesktopDashboard: React.FC = () => {
                                     isCooking ? 'bg-amber-100 text-amber-900' :
                                     'bg-emerald-100 text-emerald-900'
                                   }`}>
-                                    {isPending ? 'در انتظار تأیید گارسون' : isCooking ? 'در حال پخت آشپزخانه' : 'آماده / تحویل'}
+                                    {staffOrderStatus(order)}
                                   </span>
                                 </div>
                                 <span className="text-xs text-[#506354] font-mono mt-0.5 block">
