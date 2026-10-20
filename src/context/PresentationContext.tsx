@@ -8,7 +8,13 @@ function saved(key:string,fallback:string){try{return localStorage.getItem(key)|
 export function PresentationProvider({children}:{children:React.ReactNode}){const {currentView,setCurrentView,setActiveMenuId,clearCart,showToast,business,servicePoints,selectedTableNumber,setSelectedTableNumber}=useApp();const [returnView,setReturnView]=useState<AppView|null>(null);const [sample,setSample]=useState<string|null>(null),[palette,setPaletteState]=useState(()=>saved('menosaz-palette','original')),[paper,setPaperState]=useState(()=>Number(saved('restored-paper','1'))),[account,setAccount]=useState<Account|null>(null);
  useEffect(()=>{refreshAccount();const timer=setInterval(refreshAccount,30000);return()=>clearInterval(timer);},[]);
  useEffect(()=>{const onBlocked=()=>{window.dispatchEvent(new Event('workspace-clear'));setAccount(null);setCurrentView('website');showToast('حساب مسدود شده است؛ با پشتیبانی تماس بگیر');};window.addEventListener('account-blocked',onBlocked);return()=>window.removeEventListener('account-blocked',onBlocked);},[]);
- async function refreshAccount(){if(!BACKEND)return;try{const d=await api('/auth/me');setAccount(d.account);}catch{}}
+ async function refreshAccount(){if(!BACKEND)return;try{const d=await api('/auth/me');setAccount(d.account);if(d.account?.role==='waiter'||d.account?.role==='kitchen'){
+ const params=new URLSearchParams(window.location.search),target=params.get('business');
+ if(!target||!d.account.businessId||target===d.account.businessId){
+ const requested=params.get('view');
+ if(requested==='waiter'||requested==='kitchen'||requested==='website'||!requested)setCurrentView(accountView(d.account));
+ }
+ }}catch{/* Keep the current view while network access is temporarily unavailable. */}}
  async function selectBusiness(id:string){const d=await api('/access/business',{businessId:id});window.dispatchEvent(new Event('workspace-clear'));clearCart();setActiveMenuId('main');setAccount(d.account);setCurrentView(accountView(d.account));window.dispatchEvent(new Event('workspace-auth'));}
  const setPalette=(id:string)=>{setPaletteState(id);try{localStorage.setItem('menosaz-palette',id);}catch{}};const setPaper=(id:number)=>{setPaperState(id);try{localStorage.setItem('restored-paper',String(id));}catch{}};
  async function verifyPhone(phone:string,code:string,options:Record<string,unknown>={}){const data=await api('/auth/verify',{phone,code,...options});setAccount(data.account);window.dispatchEvent(new Event('workspace-auth'));setCurrentView(currentView==='checkout'&&data.account?.role==='manager'?'checkout':accountView(data.account));showToast('وارد حساب شدی');}
