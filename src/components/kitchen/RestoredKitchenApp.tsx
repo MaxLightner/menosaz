@@ -1,6 +1,83 @@
+import React,{useState} from 'react';
 import {usePresentation} from '../../context/PresentationContext';
 import {BACKEND} from '../../services/backend';
-import React,{useState} from 'react';import {useApp} from '../../context/AppContext';import {Order} from '../../types';import {OrderDialog} from '../common/OrderDialog';import {OrderReview} from '../common/OrderReview';import {canConfirmKitchen,isKitchenConfirmed,pendingFoodCount} from '../../lib/orderRules';
-export const RestoredKitchenApp:React.FC=()=>{const {account}=usePresentation(),canAct=!BACKEND||account?.businessRole==='kitchen';const {syncError,isServerConnected,refreshWorkspace,orders,business,confirmKitchen,showToast}=useApp(),[review,setReview]=useState<Order|null>(null),[busy,setBusy]=useState(false);const list=orders.filter(o=>o.businessId===business.id&&o.paymentStatus!=='unpaid'&&['cooking','ready','delivered'].includes(o.status)).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));async function confirm(){if(!review)return;setBusy(true);try{const latest=orders.find(o=>o.id===review.id);if(!latest||latest.updatedAt!==review.updatedAt){showToast('سفارش تغییر کرده؛ دوباره بررسی کن');setReview(null);return;}await confirmKitchen(review.id);setReview(null);}catch(e){showToast((e as Error).message);}finally{setBusy(false);}}
- return <main className="restored-staff restored-kitchen">{!isServerConnected&&<div className="staff-sync disconnected" role="status">{syncError||'در حال اتصال…'}<button onClick={refreshWorkspace}>تازه‌سازی</button></div>}<header><div className="staff-identity"><span>{business.name}</span><span>رستوران</span></div><h1>سفارش‌های آشپزخانه</h1><div className="kitchen-dashboard"><strong>{pendingFoodCount(orders.filter(o=>o.businessId===business.id))}</strong><span>غذای منتظر ارسال</span></div></header>{list.map(o=><article className={'staff-order '+(o.deliveryStatus==='delivered'?'closed':'')} key={o.id}><div className="staff-order-top"><h2>میز {o.tableNumber}</h2><time>{new Date(o.createdAt).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})}</time></div>{o.customerNotes&&<p className="staff-note">مشتری: {o.customerNotes}</p>}{o.items.map(i=><div className="kitchen-food" key={i.id}><strong>{i.quantity} ×</strong><span>{i.productName}</span>{i.selectedOptions?.map((x,j)=><small key={j}>{x.groupTitle}: {x.optionName}</small>)}{i.notes&&<p>مشتری: {i.notes}</p>}{i.waiterNotes&&<p>گارسون: {i.waiterNotes}</p>}</div>)}<div className="staff-checks"><label><input aria-label={'تأیید رستوران برای میز '+o.tableNumber} type="checkbox" checked={isKitchenConfirmed(o)} disabled={!canAct||!canConfirmKitchen(o)} onChange={()=>setReview(o)}/>تأیید رستوران</label><label><input type="checkbox" disabled checked={o.deliveryStatus==='delivered'} readOnly/>تحویل به مشتری</label></div></article>)}{!list.length&&<p className="staff-empty">سفارش پرداخت‌شده‌ای در صف نیست.</p>}{review&&<OrderDialog title="تأیید سفارش رستوران" onClose={()=>!busy&&setReview(null)}><OrderReview order={review}/><div className="restored-dialog-actions"><button className="staff-primary" onClick={confirm} disabled={busy}>{busy?'در حال ثبت…':'بله، سفارش بررسی و تأیید شد'}</button><button className="staff-secondary" onClick={()=>setReview(null)} disabled={busy}>انصراف</button></div></OrderDialog>}</main>;
+import {useApp} from '../../context/AppContext';
+import type {Order} from '../../types';
+import {canStartKitchen,canConfirmKitchen} from '../../lib/orderRules';
+
+const clock=(date:string)=>new Date(date).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
+type Group='waiting'|'preparing'|'ready';
+function stage(order:Order):Group{
+ if(order.status==='ready')return 'ready';
+ return order.restaurantConfirmed?'preparing':'waiting';
+}
+const sections:{id:Group;title:string;description:string}[]=[
+ {id:'waiting',title:'در انتظار تأیید آشپزخانه',description:'تأیید سفارش و شروع آماده‌سازی'},
+ {id:'preparing',title:'در حال آماده‌سازی',description:'پس از آماده‌شدن، گارسون را مطلع کن'},
+ {id:'ready',title:'آماده تحویل',description:'در انتظار دریافت و تحویل توسط گارسون'}
+];
+
+export const RestoredKitchenApp:React.FC=()=>{
+ const {account}=usePresentation();
+ const {syncError,isServerConnected,refreshWorkspace,orders,business,startKitchen,confirmKitchen,showToast}=useApp();
+ const [busyId,setBusyId]=useState<string|null>(null);
+ const canAct=(!BACKEND||account?.businessRole==='kitchen')&&isServerConnected;
+ // Closed/delivered orders leave the operational queue immediately.
+ const active=orders.filter(o=>o.businessId===business.id&&o.paymentStatus!=='unpaid'
+   &&(o.status==='cooking'||o.status==='ready')&&o.deliveryStatus!=='delivered')
+   .sort((a,b)=>new Date(a.kitchenReceivedAt||a.createdAt).getTime()-new Date(b.kitchenReceivedAt||b.createdAt).getTime());
+ const groups=sections.map(section=>({...section,items:active.filter(o=>stage(o)===section.id)}));
+ async function advance(order:Order,action:'start'|'ready'){
+   if(busyId)return;
+   const latest=orders.find(o=>o.id===order.id);
+   if(!latest||latest.version!==order.version){showToast('سفارش تغییر کرده؛ دوباره بررسی کن');refreshWorkspace();return;}
+   setBusyId(order.id);
+   try{
+    if(action==='start')await startKitchen(order.id);
+    else await confirmKitchen(order.id);
+    showToast(action==='start'?'آماده‌سازی سفارش آغاز شد':'سفارش آماده است؛ به گارسون اطلاع داده شد');
+   }catch(error){showToast((error as Error).message);}
+   finally{setBusyId(null);}
+ }
+ return <main className="restored-staff restored-kitchen kds-board" dir="rtl">
+  <header className="kds-header">
+   <div className="staff-identity"><span>{business.name}</span><span>آشپزخانه</span></div>
+   <h1>سفارش‌های آشپزخانه</h1>
+   <div className="kds-counters" aria-live="polite">
+    <span>منتظر تأیید <b>{groups[0].items.length.toLocaleString('fa-IR')}</b></span>
+    <span>در حال آماده‌سازی <b>{groups[1].items.length.toLocaleString('fa-IR')}</b></span>
+    <span>آماده تحویل <b>{groups[2].items.length.toLocaleString('fa-IR')}</b></span>
+   </div>
+  </header>
+  <div className={'staff-sync '+(isServerConnected?'':'disconnected')} role="status">
+   <span>{isServerConnected?'● متصل · به‌روزرسانی خودکار':syncError||'در حال اتصال به سرور…'}</span>
+   <button onClick={refreshWorkspace}>تازه‌سازی</button>
+  </div>
+  {groups.map(section=><section key={section.id} className={'kds-section kds-'+section.id}>
+   <div className="kds-section-heading"><h2>{section.title} <small>{section.items.length.toLocaleString('fa-IR')}</small></h2><p>{section.description}</p></div>
+   <div className="kds-grid">
+   {section.items.map(o=><article className={'staff-order kds-order kds-'+section.id} key={o.id}>
+    <div className="staff-order-top"><h3>میز {o.tableNumber}</h3><div className="kds-order-times">
+     <time dateTime={o.createdAt}>ثبت {clock(o.createdAt)}</time>
+     <time dateTime={o.kitchenReceivedAt||o.createdAt}>دریافت آشپزخانه {clock(o.kitchenReceivedAt||o.createdAt)}</time>
+    </div></div>
+    {o.customerNotes&&<p className="staff-note">مشتری: {o.customerNotes}</p>}
+    <ul className="kds-items">{o.items.map(item=><li className="kitchen-food" key={item.id}>
+     <strong>{item.quantity} ×</strong><span>{item.productName}</span>
+     {item.selectedOptions?.map((option,i)=><small key={i}>{option.groupTitle}: {option.optionName}</small>)}
+     {item.notes&&<p>مشتری: {item.notes}</p>}
+     {item.waiterNotes&&<p>گارسون: {item.waiterNotes}</p>}
+    </li>)}</ul>
+    {section.id==='waiting'&&<button className="staff-primary kds-action" type="button"
+     disabled={!canAct||!!busyId||!canStartKitchen(o)}
+     onClick={()=>advance(o,'start')}>{busyId===o.id?'در حال ثبت…':'تأیید سفارش و شروع آماده‌سازی'}</button>}
+    {section.id==='preparing'&&<button className="staff-primary kds-action" type="button"
+     disabled={!canAct||!!busyId||!canConfirmKitchen(o)}
+     onClick={()=>advance(o,'ready')}>{busyId===o.id?'در حال ثبت…':'سفارش آماده تحویل و اطلاع به گارسون'}</button>}
+    {section.id==='ready'&&<p className="kds-ready-message" role="status">آماده است؛ در انتظار دریافت گارسون</p>}
+   </article>)}
+   {!section.items.length&&<p className="staff-empty kds-empty">{section.id==='waiting'?'سفارش تازه‌ای در انتظار نیست.':section.id==='preparing'?'فعلاً سفارش در حال آماده‌سازی نیست.':'سفارش آماده‌ای در صف نیست.'}</p>}
+   </div>
+  </section>)}
+ </main>;
 };
