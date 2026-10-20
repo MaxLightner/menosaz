@@ -20,6 +20,27 @@
   <body class="bg-[#FAF7F2] text-[#1C1917] antialiased">
     <div id="root"></div>
     <script>
+      // randomUUID is restricted to secure contexts in some browsers.
+      // getRandomValues is available in secure and insecure contexts.
+      if (window.crypto && typeof window.crypto.randomUUID !== 'function') {
+        try {
+          Object.defineProperty(window.crypto, 'randomUUID', {
+            configurable: true,
+            value: function () {
+              var bytes = new Uint8Array(16);
+              window.crypto.getRandomValues(bytes);
+              bytes[6] = (bytes[6] & 15) | 64;
+              bytes[8] = (bytes[8] & 63) | 128;
+              var hex = Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+              return hex.slice(0,8) + '-' + hex.slice(8,12) + '-' + hex.slice(12,16) + '-' + hex.slice(16,20) + '-' + hex.slice(20);
+            }
+          });
+        } catch (error) {
+          console.error('Unable to provide randomUUID compatibility fallback', error);
+        }
+      }
+    </script>
+    <script>
       // Keep startup failures visible when a script or asset fails before React can mount.
       window.__mizatoStartupError = '';
       window.addEventListener('error', function(event) {
