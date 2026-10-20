@@ -9,6 +9,7 @@ import {MenusManager} from './MenusManager';
 import {usePresentation} from '../../context/PresentationContext';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import {staffOrderStatus} from '../../lib/orderRules';
 import { AllQRAccessModal } from '../modals/AllQRAccessModal';
 import { AddDishModal } from '../modals/AddDishModal';
 
@@ -300,7 +301,7 @@ export const MobileDashboard: React.FC = () => {
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           isPending ? 'bg-orange-100 text-[#51805A]' : 'bg-emerald-100 text-emerald-900'
                         }`}>
-                          {isPending ? 'در انتظار تأیید گارسون' : order.status === 'cooking' ? 'در حال پخت آشپزخانه' : 'تحویل به میز'}
+                          {staffOrderStatus(order)}
                         </span>
                       </div>
 
