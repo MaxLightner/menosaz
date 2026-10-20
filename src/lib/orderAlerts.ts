@@ -7,12 +7,16 @@ export function orderAlerts(view:string,previous:AlertSnapshot|null,current:Aler
  const orders=new Map((previous.orders||[]).map(o=>[o.id,o.status]));
  if(view==='waiter'){
   for(const o of current.orders||[])if(o.status==='pending_waiter'&&!orders.has(o.id))alerts.push({id:o.id,message:'سفارش جدید برای میز '+o.tableNumber});
+  for(const o of current.orders||[])if(o.status==='ready'&&orders.get(o.id)!=='ready')alerts.push({id:o.id+'-ready',message:'سفارش میز '+o.tableNumber+' آماده است؛ برای دریافت از آشپزخانه اقدام کن.'});
   const calls=new Set((previous.serviceCalls||[]).map(c=>c.id));for(const c of current.serviceCalls||[])if(c.status==='pending'&&!calls.has(c.id))alerts.push({id:c.id,message:'درخواست جدید از میز '+c.tableNumber});
  }
  if(view==='kitchen')for(const o of current.orders||[])if(o.status==='cooking'&&orders.get(o.id)!=='cooking')alerts.push({id:o.id,message:'سفارش تازه به آشپزخانه رسید'});
  if(view==='customer'){
   for(const o of current.orders||[])if(['ready','delivered'].includes(o.status)&&!['ready','delivered'].includes(orders.get(o.id)||''))alerts.push({id:o.id+'-ready',message:o.status==='ready'?'غذای شما آماده است؛ گارسون برای تحویل اقدام می‌کند.':'تحویل سفارش شما ثبت شد.'});
   const seen=new Set((previous.notices||[]).map(n=>n.id));for(const notice of current.notices||[])if(!seen.has(notice.id))alerts.push({id:notice.id,message:notice.message});
+ }
+ if(['dashboard-desktop','dashboard-mobile'].includes(view)){
+  for(const o of current.orders||[])if(o.status==='delivered'&&orders.get(o.id)!=='delivered')alerts.push({id:o.id+'-delivered',message:'تحویل سفارش میز '+o.tableNumber+' توسط گارسون ثبت شد.'});
  }
  if(['waiter','dashboard-desktop','dashboard-mobile'].includes(view)){
   const long=new Set((previous.servicePoints||[]).filter(p=>(p.activeSession?.durationSeconds||0)>=3600).map(p=>p.activeSession!.id));
