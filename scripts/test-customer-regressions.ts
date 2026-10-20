@@ -30,8 +30,8 @@ assert.equal(localProductImage({...product,imageUrl:''}),'/menu-tiles/food-15.we
 assert.equal(customerOrderStatus({status:'cancelled',deliveryStatus:'pending'}),'لغو شد');
 assert.equal(customerOrderStatus({status:'delivered',deliveryStatus:'delivered'}),'تحویل داده شد');
 assert.equal(customerOrderStatus({status:'pending_waiter',deliveryStatus:'pending'}),'در انتظار گارسون');
-assert.equal(customerOrderStatus({status:'ready',deliveryStatus:'pending'}),'رستوران تأیید کرد');
-assert.equal(customerOrderStatus({status:'cooking',deliveryStatus:'pending'}),'برای رستوران ارسال شد');checks++;
+assert.equal(customerOrderStatus({status:'ready',deliveryStatus:'pending'}),'آماده تحویل به گارسون');
+assert.equal(customerOrderStatus({status:'cooking',deliveryStatus:'pending'}),'در انتظار تأیید آشپزخانه');checks++;
 assert.equal(displayImagePath('/menu-tiles/food-0.webp','/menosaz/'),'/menosaz/menu-tiles/food-0.webp');
 assert.equal(displayImagePath('/menu-tiles/service.svg','/menosaz/'),'/menosaz/menu-tiles/service.svg');
 assert.equal(displayImagePath('/menu-assets/cappuccino.webp','/menosaz/'),'/menosaz/menu-assets/cappuccino.webp');assert.equal(displayImagePath('/menosaz/media/food-0.webp','/menosaz/'),'/menosaz/media/food-0.webp');assert.equal(catalogImagePath('/menosaz/media/food-0.webp','/menosaz/'),'/media/food-0.webp');assert.equal(displayImagePath('https://example.com/photo.webp','/menosaz/'),'https://example.com/photo.webp');checks++;
