@@ -66,8 +66,10 @@ const data=await nativePhoneSession(db,client,phone);
 if(body.staffBusinessId){
  const claimed=await db.rpc('mizato_staff_claim',{p_uid:data.user.id,p_phone:phone,p_business:String(body.staffBusinessId)});
  if(claimed.error)return reply({error:claimed.error.message||'شماره گارسون ثبت نشده است'},403);
- const shift=await db.rpc('mizato_staff_api',{p_path:'/staff/shift',p_body:{action:'start'},p_uid:data.user.id});
- if(shift.error||shift.data?.status!==200)return reply({error:'شروع شیفت ثبت نشد؛ لطفاً دوباره تلاش کن'},503);
+ if(claimed.data?.role!=='kitchen'){
+  const shift=await db.rpc('mizato_staff_api',{p_path:'/staff/shift',p_body:{action:'start'},p_uid:data.user.id});
+  if(shift.error||shift.data?.status!==200)return reply({error:'شروع شیفت ثبت نشد؛ لطفاً دوباره تلاش کن'},503);
+ }
 }
 const acceptance=await db.rpc('mizato_accept_terms',{p_uid:data.user.id,p_version:'2026-10-19'});if(acceptance.error)return reply({error:'ثبت پذیرش قوانین انجام نشد'},503);
 const result=await db.rpc('menu_api_v2',{p_path:body.staffBusinessId?'/account':body.mode==='register'?'/register':'/account',p_method:'POST',p_body:body,p_uid:data.user.id});if(result.error)return reply({error:'ثبت حساب انجام نشد'},500);if(result.data.data?.code==='REGISTRATION_REQUIRED')return reply({account:{name:'تکمیل حساب',phone,role:'manager',demo:false,needsProfile:true,registrationPending:true,termsAccepted:true},session:data.session});if(result.data.status!==200)return reply(result.data.data,result.data.status);const profile=await db.rpc('menu_profile',{p_uid:data.user.id});return reply({...result.data.data,account:{...result.data.data.account,needsProfile:profile.data?.needsProfile===true},session:data.session});
