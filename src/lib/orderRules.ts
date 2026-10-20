@@ -13,3 +13,11 @@ export function customerOrderStatus(o:Pick<Order,'status'|'deliveryStatus'>){
  if(o.status==='cooking')return isKitchenConfirmed(o as Order)?'در حال آماده‌سازی':'در انتظار تأیید آشپزخانه';
  return 'برای رستوران ارسال شد';
 }
+
+export function staffOrderStatus(o:Order):string{
+ if(o.status==='cancelled')return 'سفارش لغو شد';
+ if(o.status==='delivered'||o.deliveryStatus==='delivered')return 'سفارش تحویل داده شد';
+ if(o.status==='pending_waiter')return 'در انتظار تأیید و دریافت وجه گارسون';
+ if(o.status==='ready')return 'سفارش آماده شده؛ در انتظار دریافت گارسون';
+ return isKitchenConfirmed(o)?'در حال آماده‌سازی آشپزخانه':'در انتظار تأیید آشپزخانه';
+}
