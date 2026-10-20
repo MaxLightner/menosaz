@@ -19,6 +19,34 @@
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script></head>
   <body class="bg-[#FAF7F2] text-[#1C1917] antialiased">
     <div id="root"></div>
+    <script>
+      // Keep startup failures visible when a script or asset fails before React can mount.
+      window.__mizatoStartupError = '';
+      window.addEventListener('error', function(event) {
+        window.__mizatoStartupError = event.message || 'Loading a required script or asset failed.';
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        window.__mizatoStartupError = String(event.reason?.message || event.reason || 'An unexpected error occurred.');
+      });
+      window.setTimeout(function() {
+        const root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          const section = document.createElement('section');
+          section.dir = 'rtl';
+          section.style.cssText = 'margin:10vh auto;max-width:540px;padding:24px;font:16px sans-serif;line-height:2';
+          const title = document.createElement('h2');
+          title.textContent = 'میزاتو بارگذاری نشد';
+          const desc = document.createElement('p');
+          desc.textContent = 'لطفاً صفحه را دوباره باز کنید. اگر مشکل ادامه داشت، متن خطا را برای پشتیبانی ارسال کنید.';
+          const error = document.createElement('pre');
+          error.dir = 'ltr';
+          error.style.cssText = 'font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere';
+          error.textContent = window.__mizatoStartupError || 'Application entry point could not load.';
+          section.append(title, desc, error);
+          root.append(section);
+        }
+      }, 4500);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
