@@ -40,6 +40,8 @@ jobs:
           pnpm run test:customer
           pnpm exec tsx scripts/test-menu-library.ts
           pnpm exec tsx scripts/test-image-editor.ts
+          node scripts/check-public-release.mjs
+          node scripts/check-live-staff.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
