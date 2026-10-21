@@ -164,7 +164,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const data=await api(publicView?(fromPoint?'/public/resolve?'+new URLSearchParams({...(params.get('q')?{q:params.get('q')!}:{business:b,table:String(selectedTableNumber)}),tab:activeMenuId}).toString():'/public/menu?business='+encodeURIComponent(b)+'&menu='+encodeURIComponent(activeMenuId)):'/workspace');
       if(publicView&&currentView==='customer'){
         let guest=data.servicePoint?savedGuestSession(data.business.id,data.servicePoint.id):null;
-        const scanned=params.has('q')||(params.get('view')==='customer'&&!params.has('preview')&&params.has('business')&&params.has('table'));
+        const scanned=params.has('q'); // Legacy links can browse the menu, but cannot create a table session.
         if(scanned&&data.servicePoint&&!guest?.sessionId){try{guest=await ensureGuestSession(data.business.id,data.servicePoint.id,data.servicePoint.tableNumber);}catch(error){if((error as any).code==='SESSION_CLOSED')data.closed=true;else throw error;}}
         if(guest?.sessionId){try{const status=await api('/sessions/status',guest);data.orders=status.orders;data.notices=status.notices;data.closed=status.status==='closed';}catch(error){if((error as any).code==='SESSION_INVALID')data.closed=true;else throw error;}}else{const grants=JSON.parse(sessionStorage.getItem('menosaz-guest-grants')||'[]');if(grants.length)data.orders=await api('/order-status',{grants});}
       }
