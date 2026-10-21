@@ -24,7 +24,13 @@ export async function runSecurityRegressionTests(db) {
  const withQr=await call('/sessions/open','POST',{q,guestToken:crypto.randomUUID()});
  assert.equal(withQr.status,200,JSON.stringify(withQr));assert.ok(withQr.data.sessionId);
  checks++;
- const feed=await call('/public/feed');
+ await db.query("update businesses set settings=settings||jsonb_build_object('secretDemo','never-public') where id='pich-shemroon'");
+ const sanitizedMenu=await call('/public/menu','GET',{business:'pich-shemroon',menu:'main'});
+ const sanitizedResolve=await call('/public/resolve','GET',{business:'pich-shemroon',table:'1'});
+ assert.equal(Object.hasOwn(sanitizedMenu.data.business,'secretDemo'),false);
+ assert.equal(Object.hasOwn(sanitizedResolve.data.business,'secretDemo'),false);
+ checks++;
+  const feed=await call('/public/feed');
  assert.equal(feed.status,200);assert.deepEqual(feed.data,[]);
  checks++;
  const user='00000000-0000-4000-a000-000000000120';
