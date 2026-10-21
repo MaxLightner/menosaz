@@ -75,6 +75,7 @@ if(process.argv.includes('--platform')) await (await import('./test-platform.mjs
 if(process.argv.includes('--platform')) {
  await db.exec(await readFile(new URL('../supabase/migrations/202610210003_security_privacy_registration.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/202610210004_order_history_privacy_indexes.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/202610210005_public_business_projection.sql',import.meta.url),'utf8'));
  await (await import('./test-security-regressions.mjs')).runSecurityRegressionTests(db);
 }
 await db.close();
