@@ -72,4 +72,8 @@ if(process.env.TEST_ACCESS==='yes'||['--access','--points','--orders','--platfor
 if(['--points','--orders','--platform'].some(a=>process.argv.includes(a))) await (await import('./test-points.mjs')).runPointTests(db,users);
 if(['--orders','--platform'].some(a=>process.argv.includes(a))) await (await import('./test-orders.mjs')).runOrderTests(db,users,order,grant);
 if(process.argv.includes('--platform')) await (await import('./test-platform.mjs')).runPlatformTests(db,users);
+if(process.argv.includes('--platform')) {
+ await db.exec(await readFile(new URL('../supabase/migrations/202610210003_security_privacy_registration.sql',import.meta.url),'utf8'));
+ await (await import('./test-security-regressions.mjs')).runSecurityRegressionTests(db);
+}
 await db.close();
