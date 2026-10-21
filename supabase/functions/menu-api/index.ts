@@ -12,11 +12,9 @@ const client=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:
 if(uid&&!['/auth/logout','/auth/request','/auth/verify'].includes(path)&&path!='/product-gallery'&&!path.startsWith('/staff/')&&!path.startsWith('/feedback/')&&!path.startsWith('/club/')){const checked=await db.rpc('access_authorize',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});if(checked.error)return reply({error:'بررسی دسترسی انجام نشد'},503);if(checked.data?.allowed!==true){const {allowed,status,...data}=checked.data;return reply(data,status||403);}}
 const ip=req.headers.get('x-forwarded-for')?.split(',')[0]||'unknown';const fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip)))).map(v=>v.toString(16).padStart(2,'0')).join('');const authAction=['/auth/request','/auth/verify','/staff/check'].includes(path),read=req.method==='GET'||path==='/sessions/status'||path==='/order-status';const limit=await db.rpc('menu_rate',{p_key:(authAction?'auth:':read?'read:':'write:')+fingerprint+(read&&uid?':'+uid:''),p_max:authAction?20:read?1200:120});if(limit.error||limit.data!==true)return reply({error:'تعداد درخواست‌ها زیاد است؛ کمی صبر کن'},429);// Staff/feedback operations have their own security-definer RPC authorization checks.
 if(path==='/staff/check'&&req.method==='POST'){
- const bid=String(body.businessId||'').slice(0,120);
- let phone;try{phone=normalize(body.phone);}catch{return reply({error:'شماره معتبر نیست'},400);}
- const allowed=await db.rpc('mizato_staff_allowed',{bid,raw_phone:phone});
- if(allowed.error)return reply({error:'بررسی فهرست کارکنان در دسترس نیست'},503);
- return reply({allowed:allowed.data===true,error:allowed.data===true?null:'شماره شما در فهرست گارسون‌های فعال این رستوران ثبت نشده است'});
+ // Never disclose staff membership before the caller proves ownership of the phone.
+ try{normalize(body.phone);}catch{return reply({error:'شماره معتبر نیست'},400);}
+ return reply({allowed:true});
 }
 if(path.startsWith('/staff/')&&['/staff/save','/staff/list','/staff/report','/staff/mine','/staff/shift'].includes(path)){
  if(!uid)return reply({error:'ابتدا وارد حساب شو'},401);
@@ -44,11 +42,8 @@ if(path==='/club/unsubscribe'&&req.method==='POST'){
 }
 if(['/auth/request','/auth/verify','/auth/register','/auth/logout'].includes(path)&&req.method!=='POST')return reply({error:'روش درخواست معتبر نیست'},405);if(path==='/auth/request'){
  if(body.acceptTerms!==true||body.termsVersion!=='2026-10-19')return reply({error:'برای ادامه، قوانین استفاده را بپذیر'},400);const ph=normalize(body.phone);
- if(body.staffBusinessId){
-   const check=await db.rpc('mizato_staff_allowed',{bid:String(body.staffBusinessId),raw_phone:ph});
-   if(check.error)return reply({error:'بررسی کارکنان ممکن نیست'},503);
-   if(check.data!==true)return reply({error:'این شماره در فهرست گارسون‌های فعال رستوران ثبت نشده است'},403);
- }
+ // Staff eligibility is checked only after a successful OTP verification.
+ // The regular OTP guard enforces the same per-phone rate limit for staff and managers.
  const secret=Deno.env.get('OTPY_API_KEY');if(!secret)return reply({error:'سرویس پیامک آماده نیست'},503);
  const guard=await db.rpc('menu_otp_guard',{p_phone:ph,p_op:'send'});if(guard.error)return reply({error:'سرویس ورود آماده نیست'},503);if(!guard.data.allowed)return reply({error:'برای ارسال دوباره کمی صبر کن',retryAfter:guard.data.retryAfter},429);
  // Charge limits are reserved before contacting the provider, including failures.
