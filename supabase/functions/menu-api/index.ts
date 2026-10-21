@@ -7,7 +7,28 @@ const url=Deno.env.get('SUPABASE_URL')!,key=Deno.env.get('SUPABASE_SERVICE_ROLE_
 const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 const origins=new Set([new URL(publicSiteUrl()).origin,'https://mizato.ir','https://www.mizato.ir','https://maxlightner.github.io','http://127.0.0.1:4180','http://localhost:4180',...(Deno.env.get('ALLOWED_ORIGINS')||'').split(',').filter(Boolean)]);
 const normalize=(value:unknown)=>{let p=String(value||'').replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[\s()-]/g,'');p=p.replace(/^\+98|^0098|^98/,'0');if(!/^09\d{9}$/.test(p))throw Error('شماره موبایل معتبر وارد کن');return '+98'+p.slice(1);};
-Deno.serve(async req=>{const origin=req.headers.get('origin')||'',headers={'Content-Type':'application/json','Access-Control-Allow-Origin':origins.has(origin)?origin:'https://maxlightner.github.io','Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info,x-menu-session','Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,OPTIONS','Vary':'Origin'};const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data,(field,value)=>{if(field==='qrCodeUrl'&&typeof value==='string'){const token=new URL(value).searchParams.get('q');if(token&&/^[0-9a-f]{32}$/.test(token))return publicSiteUrl()+'/?q='+token;}return value;}),{status,headers});if(origin&&!origins.has(origin))return reply({error:'مبدأ درخواست معتبر نیست'},403);if(req.method==='OPTIONS')return new Response(null,{status:204,headers});try{const u=new URL(req.url),path=u.pathname.replace(/^.*\/menu-api/,'')||'/health',body=req.method==='GET'?Object.fromEntries(u.searchParams):await req.json();if(JSON.stringify(body).length>4*1024*1024)return reply({error:'حجم درخواست زیاد است'},413);
+async function limitedJson(req:Request,maxBytes=4*1024*1024){
+ const size=req.headers.get('content-length');
+ if(size&&(!/^\d+$/.test(size)||Number(size)>maxBytes))throw Object.assign(Error('حجم درخواست زیاد است'),{status:413});
+ if(!req.body)return {};
+ const reader=req.body.getReader(),chunks:Uint8Array[]=[];let length=0;
+ try{
+  while(true){
+   const {done,value}=await reader.read();if(done)break;
+   length+=value.byteLength;
+   if(length>maxBytes){await reader.cancel().catch(()=>{});throw Object.assign(Error('حجم درخواست زیاد است'),{status:413});}
+   chunks.push(value);
+  }
+ }finally{reader.releaseLock();}
+ const bytes=new Uint8Array(length);let offset=0;
+ for(const part of chunks){bytes.set(part,offset);offset+=part.byteLength;}
+ let data:unknown;
+ try{data=JSON.parse(new TextDecoder().decode(bytes));}
+ catch{throw Object.assign(Error('متن JSON نامعتبر است'),{status:400});}
+ if(data===null||Array.isArray(data)||typeof data!=='object')throw Object.assign(Error('بدنه درخواست معتبر نیست'),{status:400});
+ return data;
+}
+Deno.serve(async req=>{const origin=req.headers.get('origin')||'',headers={'Content-Type':'application/json','Access-Control-Allow-Origin':origins.has(origin)?origin:'https://maxlightner.github.io','Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info,x-menu-session','Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,OPTIONS','Vary':'Origin'};const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data,(field,value)=>{if(field==='qrCodeUrl'&&typeof value==='string'){const token=new URL(value).searchParams.get('q');if(token&&/^[0-9a-f]{32}$/.test(token))return publicSiteUrl()+'/?q='+token;}return value;}),{status,headers});if(origin&&!origins.has(origin))return reply({error:'مبدأ درخواست معتبر نیست'},403);if(req.method==='OPTIONS')return new Response(null,{status:204,headers});try{const u=new URL(req.url),path=u.pathname.replace(/^.*\/menu-api/,'')||'/health',body=req.method==='GET'?Object.fromEntries(u.searchParams):await limitedJson(req);
 const client=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});const token=req.headers.get('x-menu-session');let uid=null,userPhone='';if(token){const {data,error}=await client.auth.getUser(token);if(error||!data.user)return reply({error:'نشست منقضی شده؛ دوباره وارد شو'},401);uid=data.user.id;userPhone=data.user.phone||'';}
 if(uid&&!['/auth/logout','/auth/request','/auth/verify'].includes(path)&&path!='/product-gallery'&&!path.startsWith('/staff/')&&!path.startsWith('/feedback/')&&!path.startsWith('/club/')){const checked=await db.rpc('access_authorize',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});if(checked.error)return reply({error:'بررسی دسترسی انجام نشد'},503);if(checked.data?.allowed!==true){const {allowed,status,...data}=checked.data;return reply(data,status||403);}}
 const ip=req.headers.get('x-forwarded-for')?.split(',')[0]||'unknown';const fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip)))).map(v=>v.toString(16).padStart(2,'0')).join('');const authAction=['/auth/request','/auth/verify','/staff/check'].includes(path),read=req.method==='GET'||path==='/sessions/status'||path==='/order-status';const limit=await db.rpc('menu_rate',{p_key:(authAction?'auth:':read?'read:':'write:')+fingerprint+(read&&uid?':'+uid:''),p_max:authAction?20:read?1200:120});if(limit.error||limit.data!==true)return reply({error:'تعداد درخواست‌ها زیاد است؛ کمی صبر کن'},429);// Staff/feedback operations have their own security-definer RPC authorization checks.
