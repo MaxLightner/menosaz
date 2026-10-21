@@ -455,7 +455,7 @@ export const DesktopDashboard: React.FC = () => {
                   <div className="flex items-center gap-2.5">
                     <h2 className="text-lg text-[#29372E] font-extrabold">سفارش‌های زنده میزها</h2>
                     <span className="px-2.5 py-0.5 rounded-full bg-[#465B3F]/15 border border-[#465B3F]/30 text-[#465B3F] text-xs font-bold">
-                      {orders.length} سفارش در جریان
+                      {orders.filter(o=>o.status!=='delivered'&&o.status!=='cancelled').length} سفارش در جریان
                     </span>
                   </div>
                   <button 
@@ -468,7 +468,7 @@ export const DesktopDashboard: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {orders.slice(0, 4).map((order) => {
+                  {orders.filter(o=>o.status!=='delivered'&&o.status!=='cancelled').sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0, 4).map((order) => {
                     const isPending = order.status === 'pending_waiter';
                     const isCooking = order.status === 'cooking';
                     const isDelivered = order.deliveryStatus === 'delivered';
@@ -563,6 +563,7 @@ export const DesktopDashboard: React.FC = () => {
                   })}
                 </div>
               </section>
+              <OrderHistory/>
             </>
           )}
 
