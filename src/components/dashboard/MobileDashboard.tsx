@@ -1,3 +1,4 @@
+import {OrderHistory} from './OrderHistory';
 import {RemoveProduct} from './RemoveProduct';
 import {PointsPanel} from './PointsPanel';
 import {ProductPhotoButton} from '../common/ProductPhotoButton';
