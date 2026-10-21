@@ -18,7 +18,7 @@ export function PhoneLogin({onDone,staffBusinessId}:{onDone:()=>void;staffBusine
  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),500);return()=>clearInterval(timer);},[]);
  function keep(value:any){setPending(value);try{value?sessionStorage.setItem(cacheKey,JSON.stringify(value)):sessionStorage.removeItem(cacheKey);}catch{}}
  async function send(){if(busy||wait)return;if(!acceptTerms){setError('برای ادامه، قوانین استفاده را بپذیر.');return;}const normalized=digits(phone).replace(/\D/g,'');if(!/^09\d{9}$/.test(normalized)){setError('شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');return;}setBusy(true);setError('');try{
-  if(staffBusinessId){const eligibility=await api<{allowed:boolean;error?:string}>('/staff/check',{businessId:staffBusinessId,phone:normalized});if(!eligibility.allowed)throw Error(eligibility.error||'شماره شما برای کارکنان این رستوران مجاز نشده است');}
+  // Verify staff eligibility only after proving phone ownership with OTP.
   const data=await api('/auth/request',{phone:normalized,acceptTerms,termsVersion:'2026-10-19',...(staffBusinessId?{staffBusinessId}:{})});const sentAt=Date.now();const delay=typeof data.resendAt==='number'&&typeof data.serverNow==='number'?Math.max(0,data.resendAt-data.serverNow):(data.resendIn||60)*1000;
   setPhone(data.phone);setCode('');keep({phone:data.phone,challenge:data.challenge||'',demoCode:data.demoCode||'',nextSendAt:sentAt+delay,expiresAt:sentAt+(data.expiresIn||120)*1000,remember,acceptTerms});setNow(sentAt);
  }catch(e){setError((e as Error).message);if(e instanceof ApiError&&e.retryAfter){keep({...pending,phone,expiresAt:Date.now()+Math.max(e.retryAfter,120)*1000,nextSendAt:Date.now()+e.retryAfter*1000});}}
