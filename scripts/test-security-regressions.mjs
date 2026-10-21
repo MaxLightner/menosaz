@@ -9,11 +9,11 @@ export async function runSecurityRegressionTests(db) {
  const menu=await call('/public/menu','GET',{business:'pich-shemroon',menu:'main'});
  assert.equal(menu.status,200);
  assert.ok(Array.isArray(menu.data.servicePoints));
- for(const point of menu.data.servicePoints)for(const secret of ['qrToken','qrCodeUrl','activeSession','menuIds','version'])assert.equal(Object.hasOwn(point,secret),false,secret);
+ for(const point of menu.data.servicePoints)for(const secret of ['qrToken','qrCodeUrl','activeSession','menuIds','version','isOccupied'])assert.equal(Object.hasOwn(point,secret),false,secret);
  checks++;
  const legacy=await call('/public/resolve','GET',{business:'pich-shemroon',table:'1'});
  assert.equal(legacy.status,200);
- for(const field of ['qrToken','qrCodeUrl','activeSession','menuIds','version'])assert.equal(Object.hasOwn(legacy.data.servicePoint,field),false,field);
+ for(const field of ['qrToken','qrCodeUrl','activeSession','menuIds','version','isOccupied'])assert.equal(Object.hasOwn(legacy.data.servicePoint,field),false,field);
  checks++;
  const before=(await db.query("select count(*)::int n from service_sessions")).rows[0].n;
  const forged=await call('/sessions/open','POST',{business:'pich-shemroon',table:1,guestToken:crypto.randomUUID()});
