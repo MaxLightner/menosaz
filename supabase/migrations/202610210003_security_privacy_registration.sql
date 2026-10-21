@@ -153,23 +153,7 @@ CREATE OR REPLACE FUNCTION public.order_open_session(body jsonb)
 AS $function$
 declare resolved jsonb;bid text;pid text;s service_sessions;g session_guests;token text=body->>'guestToken';hash text;
 begin
- if coalesce(body->>'q','') !~ '^[0-9a-f]{32} not between 32 and 100 then raise exception 'توکن مهمان معتبر نیست';end if;hash=encode(sha256(convert_to(token,'UTF8')),'hex');
- resolved=point_resolve(body);if resolved->>'status'<>'200' then return resolved;end if;bid=resolved#>>'{data,business,id}';pid=resolved#>>'{data,servicePoint,id}';
- perform 1 from service_points where business_id=bid and id=pid for update;
- select x.* into g from session_guests x join service_sessions ss on ss.business_id=x.business_id and ss.id=x.session_id where x.business_id=bid and ss.service_point_id=pid and x.token_hash=hash limit 1;
- if g.id is not null then
-  select * into s from service_sessions where business_id=bid and id=g.session_id;
-  if s.status<>'open' or g.expires_at<=now() or g.revoked_at is not null then return jsonb_build_object('status',409,'data',jsonb_build_object('error','نشست قبلی پایان یافته؛ برای سفارش تازه دوباره شروع کن','code','SESSION_CLOSED'));end if;
- else
-  select * into s from service_sessions where business_id=bid and service_point_id=pid and status='open';
-  if s.id is not null and s.expires_at<=now() and not exists(select 1 from orders where business_id=bid and session_id=s.id and status not in ('delivered','cancelled')) and not exists(select 1 from service_requests where business_id=bid and session_id=s.id and status in ('pending','accepted')) then update service_sessions set status='closed',closed_at=now() where business_id=bid and id=s.id;s.id=null;end if;
-  if s.id is null then insert into service_sessions(business_id,id,service_point_id) values(bid,'session-'||gen_random_uuid(),pid) returning * into s;end if;
-  insert into session_guests(business_id,id,session_id,token_hash) values(bid,'guest-'||gen_random_uuid(),s.id,hash) returning * into g;
- end if;
- update service_points set is_occupied=true where business_id=bid and id=pid;
- return jsonb_build_object('status',200,'data',jsonb_build_object('businessId',bid,'sessionId',s.id,'guestId',g.id,'servicePointId',pid,'expiresAt',g.expires_at));
-end $function$
- then return jsonb_build_object('status',403,'data',jsonb_build_object('error','برای سفارش، QR معتبر میز را اسکن کنید','code','QR_REQUIRED'));end if;
+ if coalesce(body->>'q','') !~ '^[0-9a-f]{32}$' then return jsonb_build_object('status',403,'data',jsonb_build_object('error','برای سفارش، QR معتبر میز را اسکن کنید','code','QR_REQUIRED'));end if;
  if length(coalesce(token,'')) not between 32 and 100 then raise exception 'توکن مهمان معتبر نیست';end if;hash=encode(sha256(convert_to(token,'UTF8')),'hex');
  resolved=point_resolve(body);if resolved->>'status'<>'200' then return resolved;end if;bid=resolved#>>'{data,business,id}';pid=resolved#>>'{data,servicePoint,id}';
  perform 1 from service_points where business_id=bid and id=pid for update;
