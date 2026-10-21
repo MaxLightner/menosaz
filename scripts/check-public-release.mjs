@@ -7,8 +7,11 @@ assert.equal(health.data.platformVersion,1);assert.equal(health.data.runtimeVers
 const content=await get('/public/content');assert.equal(content.status,200);assert.ok(content.data.version>=1);
 const privateContent=await get('/admin/content');assert.equal(privateContent.status,401);
 const legacy=await get('/public/resolve?business=pich-shemroon&table=1&menu=ignored-old-menu');assert.equal(legacy.status,200);assert.equal(legacy.data.business.id,'pich-shemroon');assert.equal(legacy.data.servicePoint.tableNumber,1);assert.equal(legacy.data.orders.length,0);assert.equal(legacy.data.servicePoint.activeSession,undefined);
-const q=new URL(legacy.data.servicePoint.qrCodeUrl).searchParams.get('q');assert.match(q,/^[0-9a-f]{32}$/);
-const qr=await get('/public/resolve?q='+q);assert.equal(qr.status,200);assert.equal(qr.data.business.id,'pich-shemroon');assert.equal(qr.data.servicePoint.tableNumber,1);
+for(const key of ['qrToken','qrCodeUrl','activeSession','menuIds','version','isOccupied'])assert.equal(Object.hasOwn(legacy.data.servicePoint,key),false,key);
+const publicMenu=await get('/public/menu?business=pich-shemroon&menu=main');assert.equal(publicMenu.status,200);
+for(const point of publicMenu.data.servicePoints||[])for(const key of ['qrToken','qrCodeUrl','activeSession','menuIds','version','isOccupied'])assert.equal(Object.hasOwn(point,key),false,key);
+const deniedSession=await fetch(base+'/sessions/open',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({business:'pich-shemroon',table:1,guestToken:'00000000-0000-4000-a000-000000000099'}),signal:AbortSignal.timeout(20000)});
+assert.equal(deniedSession.status,403);assert.equal((await deniedSession.json()).code,'QR_REQUIRED');
 const denied=await get('/workspace');assert.equal(denied.status,401);
 const invalid=await get('/public/resolve?q=invalid');assert.equal(invalid.status,404);
 console.log(JSON.stringify({health:health.data,publicContent:true,privateContentDenied:true,anonymousQR:true,legacyLink:true,privateWorkspaceDenied:true,invalidQRDenied:true,products:qr.data.products.length}));
