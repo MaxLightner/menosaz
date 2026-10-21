@@ -43,5 +43,9 @@ export async function runSecurityRegressionTests(db) {
  assert.equal(again.status,200);
  assert.equal((await db.query("select count(*)::int n from businesses")).rows[0].n,countBefore+1);
  checks++;
+ const history=await call('/orders/history','GET',{limit:1},'00000000-0000-4000-a000-000000000001');
+ assert.equal(history.status,200,JSON.stringify(history));assert.ok(Array.isArray(history.data));assert.ok(history.data.length<=1);
+ assert.equal((await call('/orders/history','GET',{limit:1})).status,401);
+ checks++;
  console.log('PASS: '+checks+' public QR secrecy, QR-only sessions, feed privacy and profile-first registration checks');
 }
