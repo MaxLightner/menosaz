@@ -348,8 +348,8 @@ export const MobileDashboard: React.FC = () => {
           {/* TAB 2: ORDERS LIST */}
           {activeTab === 'orders' && (
             <div className="space-y-3">
-              <h2 className="font-bold text-sm text-[#29372E]">همه سفارش‌های روز ({orders.length})</h2>
-              {orders.map(order => (
+              <h2 className="font-bold text-sm text-[#29372E]">سفارش‌های اخیر ({orders.length})</h2>
+              {orders.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(order => (
                 <div key={order.id} className="p-3 bg-[#FFFFFF] border border-[#DBE2D5] rounded-xl space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold">میز {order.tableNumber} - {order.orderNumber}</span>
@@ -366,6 +366,7 @@ export const MobileDashboard: React.FC = () => {
                   </div>
                 </div>
               ))}
+              <OrderHistory/>
             </div>
           )}
 
