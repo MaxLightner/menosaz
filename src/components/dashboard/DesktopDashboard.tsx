@@ -1,3 +1,4 @@
+import {ProductVariantsEditor} from './ProductVariantsEditor';
 import {OrderHistory} from './OrderHistory';
 import {RemoveProduct} from './RemoveProduct';
 import {PointsPanel} from './PointsPanel';
@@ -620,7 +621,7 @@ export const DesktopDashboard: React.FC = () => {
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
-                            <ProductPriceEditor product={prod}/>
+                            <ProductPriceEditor product={prod}/><ProductVariantsEditor product={prod}/>
                             <span className="text-[10px] text-stone-500">تومان</span>
                           </div>
                         </td>

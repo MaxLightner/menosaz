@@ -116,3 +116,32 @@
 .kds-action{width:100%;min-height:48px}
 .kds-ready-message{background:#eef9f1;border-radius:9px;color:#275b3a;padding:10px;margin:0;font-weight:700;font-size:13px;text-align:center}
 .kds-empty{grid-column:1/-1;min-height:55px;padding:14px;margin:0}
+
+/* Continuous sections, image-ring navigation and inline product models. */
+.menu-categories{gap:8px;padding:10px 12px;box-shadow:0 5px 16px #30291e0a}
+.menu-categories button{flex-basis:76px;width:76px;font-size:14px;white-space:normal}
+.menu-categories img{width:60px;height:60px;border:2px solid transparent;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
+.menu-categories .active img{border:2px solid var(--menu-primary);box-shadow:0 0 0 3px var(--menu-surface),0 0 0 4px var(--menu-primary);transform:scale(.96)}
+.menu-section-heading{display:flex;align-items:center;gap:5px;padding:14px 18px 10px;font-size:21px;font-weight:800;color:var(--menu-primary);border-bottom:1px solid #b3a58b40}
+.menu-section-heading small{margin-inline-start:auto;font-size:12px;font-weight:400;color:var(--menu-ink)}
+.menu-food.has-variants .menu-food-photo{width:38%}
+.menu-variant-choices{display:flex;flex-wrap:wrap;gap:5px}
+.menu-variant-choices button{border:1px solid #baa98c;border-radius:8px;min-height:38px;padding:5px 9px;font-size:13px;background:#ffffff66;color:var(--menu-ink);line-height:1.5}
+.menu-variant-choices button[aria-pressed=true]{background:var(--menu-primary);border-color:var(--menu-primary);color:#fff}
+.menu-overview.menu-continuous section>div{display:block;padding:0 16px}
+.menu-overview.menu-continuous article{padding:12px 0}
+.menu-overview.menu-continuous .menu-food-info{gap:8px}
+.menu-overview.menu-continuous .menu-food-bottom>span{font-size:16px}
+.manager-variants{border:1px solid #d6cdbc;border-radius:12px;padding:12px;margin:12px 0;font-size:14px}
+.manager-variants-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.manager-variants-heading button,.manager-variant-edit{font-size:12px;padding:8px;border:1px solid #bcb6a6;border-radius:8px;background:#fffaf1;color:#644331;min-height:36px}
+.manager-variant-edit{display:block;margin:6px 0;white-space:normal}
+.manager-variants p{font-size:12px;line-height:1.9;margin:8px 0;color:#6f6455}
+.manager-variants input{border:1px solid #cfc5b7;background:white;border-radius:7px;padding:8px;min-width:0;width:100%;font-size:14px}
+.manager-variant-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;gap:5px;margin-top:8px;align-items:center}
+.manager-variant-row button{min-height:40px;font-size:24px;color:#a23525}
+.manager-popular-toggle{display:flex;gap:10px;align-items:center;min-height:48px;font-size:15px;margin:8px 0}
+.manager-popular-toggle input{width:20px;height:20px;accent-color:#9e2016}
+@media(prefers-reduced-motion:reduce){.menu-categories img{transition:none}}
+
+.mizato-mobile-product-footer{flex-wrap:wrap;gap:8px}

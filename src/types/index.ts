@@ -71,6 +71,7 @@ export interface Product {
   imageUrl: string;
   prepTimeMinutes: number;
   rating?: number;
+  isPopular?: boolean;
   optionGroups?: OptionGroup[];
   updatedAt: string;
 }

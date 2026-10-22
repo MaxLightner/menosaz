@@ -1,3 +1,4 @@
+import {buildVariants,variantGroup,variantChoice} from '../src/lib/productVariants';
 import {catalogImagePath,displayImagePath} from '../src/lib/imagePath';
 import assert from 'node:assert/strict';
 import {addCartItem} from '../src/lib/cart';
@@ -36,3 +37,15 @@ assert.equal(displayImagePath('/menu-tiles/food-0.webp','/menosaz/'),'/menosaz/m
 assert.equal(displayImagePath('/menu-tiles/service.svg','/menosaz/'),'/menosaz/menu-tiles/service.svg');
 assert.equal(displayImagePath('/menu-assets/cappuccino.webp','/menosaz/'),'/menosaz/menu-assets/cappuccino.webp');assert.equal(displayImagePath('/menosaz/media/food-0.webp','/menosaz/'),'/menosaz/media/food-0.webp');assert.equal(catalogImagePath('/menosaz/media/food-0.webp','/menosaz/'),'/media/food-0.webp');assert.equal(displayImagePath('https://example.com/photo.webp','/menosaz/'),'https://example.com/photo.webp');checks++;
 console.log(`PASS: ${checks} customer cart/instructions/options/pricing/navigation/images/status regression scenarios`);
+
+const sizes=buildVariants([{id:'one',name:'یک‌نفره',price:'100'},{id:'two',name:'دونفره',price:'200'}],100,'اندازه')!;
+const sized={...product,optionGroups:[sizes]};
+assert.equal(variantGroup(sized)?.id,sizes.id);
+cart=addCartItem([],sized,[variantChoice(sizes,sizes.options[0])]);
+cart=addCartItem(cart,sized,[variantChoice(sizes,sizes.options[1])]);
+assert.equal(cart.length,2);assert.equal(cart.reduce((n,i)=>n+i.itemTotal,0),300);
+assert.throws(()=>buildVariants([{id:'x',name:'بزرگ',price:'-1'}],100,'اندازه'));
+assert.throws(()=>buildVariants([{id:'x',name:'',price:'100'}],100,'اندازه'));
+assert.throws(()=>buildVariants([{id:'x',name:'تکراری',price:'100'},{id:'y',name:'تکراری',price:'100'}],100,'اندازه'));
+assert.equal(buildVariants([],100,'اندازه'),undefined);
+console.log('PASS: model editing, final prices, separate selections and invalid model rejection');

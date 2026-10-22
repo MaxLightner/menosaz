@@ -215,6 +215,20 @@ const extraSamples:Record<string,[string,string,number,string,string][]>={"resta
 SAMPLES.forEach(sample=>{extraSamples[sample.id]?.forEach(([name,category,price,image,description],i)=>sample.items.push(item(sample.id+'-extra-'+i,name,category,price,image,description)));sample.items.forEach(p=>{p.businessId='demo-'+sample.id;});});
 const cafe=SAMPLES.find(s=>s.id==='cafe')!,iranian=SAMPLES.find(s=>s.id==='restaurant')!;
 SAMPLES.push({...cafe,id:'rooftop',name:'کافه بام',headline:'یک فنجان،\nبا منظره شهر.',subline:'قهوه، نوشیدنی و میان‌وعده در کافه بام.',items:cafe.items.filter(p=>p.categoryId!=='demo-hookah').map(p=>({...p,id:p.id+'-rooftop',businessId:'demo-rooftop'}))},{...iranian,id:'garden',name:'رستوران باغ انار',headline:'یک سفره ایرانی،\nدر آرامش باغ.',subline:'کباب، خورش و مخلفات؛ یک سفره ایرانی کامل.',items:iranian.items.map(p=>({...p,id:p.id+'-garden',businessId:'demo-garden'}))});
+const fastfoodPizza=item('pizza-size','پیتزا مخصوص','cat-fastfood',250000,'/media/food-15.webp','پنیر، قارچ، فلفل دلمه و گوشت؛ در سه اندازه قابل انتخاب.');
+fastfoodPizza.optionGroups=[{id:'variant-pizza-size',title:'اندازه',required:true,options:[{id:'one',name:'یک‌نفره',extraPrice:0},{id:'two',name:'دونفره',extraPrice:180000},{id:'four',name:'چهارنفره',extraPrice:490000}]}];
+const malt=item('malt-flavour','دلستر','cat-drink',55000,'/media/food-14.webp','نوشیدنی مالت بدون الکل؛ طعم دلخواه را انتخاب کنید.');
+malt.optionGroups=[{id:'variant-malt-flavour',title:'طعم',required:true,options:[{id:'peach',name:'هلویی',extraPrice:0},{id:'lemon',name:'لیمویی',extraPrice:0},{id:'classic',name:'کلاسیک',extraPrice:0}]}];
+SAMPLES.push({id:'fastfood',name:'فست‌فود آتیش',type:'فست‌فود',headline:'یک برش خوش‌طعم،\nبه سلیقه تو.',subline:'پیتزا، برگر و نوشیدنی؛ اندازه و طعم را همان‌جا انتخاب کن.',image:'/media/food-15.webp',items:[fastfoodPizza,item('fast-burger','برگر گوشت','cat-fastfood',280000,'/media/food-2.webp','گوشت گریل، کاهو و گوجه؛ با سس مخصوص.'),malt]});
+// Sample menus demonstrate grouped sizes/flavours; managers choose their own popular items.
+SAMPLES.forEach(sample=>{
+ sample.items.forEach(p=>{p.businessId='demo-'+sample.id;});
+ sample.items.slice(0,3).forEach(p=>{p.isPopular=true;});
+ const coffee=sample.items.find(p=>/لاته/.test(p.name));
+ if(coffee)coffee.optionGroups=[{id:'variant-size-'+coffee.id,title:'اندازه',required:true,options:[{id:'regular',name:'معمولی',extraPrice:0},{id:'large',name:'بزرگ',extraPrice:35000}]}];
+ const yogurt=sample.items.find(p=>/ماست/.test(p.name));
+ if(yogurt){yogurt.name='ماست';yogurt.optionGroups=[{id:'variant-flavour-'+yogurt.id,title:'نوع ماست',required:true,options:[{id:'plain',name:'ساده',extraPrice:0},{id:'cucumber',name:'ماست و خیار',extraPrice:15000},{id:'greek',name:'یونانی',extraPrice:25000}]}];}
+});
 export function localProductImage(p:Pick<Product,'name'|'imageUrl'|'customImage'>){return productDisplayImage(p);}
 
 

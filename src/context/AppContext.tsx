@@ -44,6 +44,7 @@ interface AppContextType {
   updateBusinessSettings: (partial: Partial<Business>) => Promise<void>;
   products: Product[];
   updateProductImage:(id:string,dataUrl:string)=>Promise<void>;
+  updateProductOptions:(id:string,patch:{optionGroups:Product["optionGroups"];isPopular:boolean;expectedVersion?:number})=>Promise<void>;
   updateProductPrice: (productId: string, newPrice: number) => Promise<void>;
   toggleProductAvailability: (productId: string, isAvailable: boolean, reason?: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'businessId' | 'updatedAt'>) => Promise<string>;
@@ -209,6 +210,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setProducts(prev=>prev.map(v=>v.id===id?p:v));
     showToast('تصویر آیتم ذخیره شد');
   }
+  async function updateProductOptions(id:string,patch:{optionGroups:Product['optionGroups'];isPopular:boolean;expectedVersion?:number}){
+    const p=await api<Product>('/products/'+id,patch,'PATCH');setProducts(prev=>prev.map(v=>v.id===id?p:v));showToast('مدل‌ها و پرطرفدارها ذخیره شد');
+  }
   const updateProductPrice = async (productId: string, newPrice: number) => {
     const p=await api<Product>('/products/'+productId,{price:newPrice},'PATCH');setProducts(prev=>prev.map(v=>v.id===productId?p:v));showToast('قیمت ذخیره شد');return;
   };
@@ -313,7 +317,7 @@ const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw E
         menuMessage,guestSessionClosed,startNewGuestSession,menus,activeMenuId,setActiveMenuId,createMenu,assignProductMenu,
         hasAnyProducts:products.some(p=>(p.menuId||'main')===activeMenuId),
         products:products.filter(p=>(p.menuId||'main')===activeMenuId),
-        updateProductImage,updateProductPrice,
+        updateProductImage,updateProductPrice,updateProductOptions,
         toggleProductAvailability,
         addProduct,
         servicePoints,

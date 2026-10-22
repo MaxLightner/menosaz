@@ -1,3 +1,4 @@
+import {ProductVariantsEditor} from './ProductVariantsEditor';
 import {OrderHistory} from './OrderHistory';
 import {RemoveProduct} from './RemoveProduct';
 import {PointsPanel} from './PointsPanel';
@@ -402,7 +403,7 @@ export const MobileDashboard: React.FC = () => {
                       <RemoveProduct product={prod}/>
                     </div>
 
-                    <div className="mizato-mobile-product-footer"><ProductPriceEditor product={prod}/>
+                    <div className="mizato-mobile-product-footer"><ProductPriceEditor product={prod}/><ProductVariantsEditor product={prod}/>
                       <label className="inline-flex items-center cursor-pointer">
                         <input 
                           type="checkbox" 

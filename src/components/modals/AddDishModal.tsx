@@ -1,3 +1,5 @@
+import {VariantFields} from '../dashboard/ProductVariantsEditor';
+import {buildVariants,type VariantDraft} from '../../lib/productVariants';
 import {IMAGE_CHOICES,sourcePhotoForItem,suggestedMenuImage} from '../../services/menuImages';
 import {displayImagePath} from '../../lib/imagePath';
 import {readProductImage} from '../../lib/productImage';
@@ -12,6 +14,7 @@ interface AddDishModalProps {
 export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) => {
   const { addProduct, showToast,categories } = useApp();
 
+  const [rows,setRows]=useState<VariantDraft[]>([]),[variantTitle,setVariantTitle]=useState('اندازه / طعم'),[isPopular,setIsPopular]=useState(false);
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   useEffect(()=>{if(!categories.some(c=>c.id===categoryId))setCategoryId(categories[0]?.id||'');},[categories,categoryId]);
@@ -43,13 +46,14 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
       return;
     }
     if(!categoryId){showToast('ابتدا از بخش دسته‌بندی‌های منو یک دسته اضافه کن');return;}
-    if (!Number.isFinite(price)||price < 0) {
+    if (!Number.isSafeInteger(price)||price < 0) {
       showToast('قیمت باید صفر یا عدد مثبت باشد');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const group=buildVariants(rows,price,variantTitle);
       await addProduct({
         name: name.trim(),
         categoryId,
@@ -58,11 +62,12 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
         isAvailable: true,
         prepTimeMinutes: prepTimeMinutes || 15,
         imageUrl: effectiveImage,
-        rating: 5.0,
+        optionGroups:group?[group]:[],
+        isPopular,
       });
 
       // reset form
-      setName('');
+      setName('');setRows([]);setIsPopular(false);
       setDescription('');setSelectedImage('');setImagePicked(false);
       onClose();
     } catch (err) {
@@ -159,6 +164,8 @@ export const AddDishModal: React.FC<AddDishModalProps> = ({ isOpen, onClose }) =
             </div>
           </div>
 
+          <VariantFields rows={rows} setRows={setRows} title={variantTitle} setTitle={setVariantTitle} basePrice={price}/>
+          <label className="manager-popular-toggle"><input type="checkbox" checked={isPopular} onChange={e=>setIsPopular(e.target.checked)}/>نمایش در پرطرفدارها</label>
           {/* Curated image picker */}
           <div>
             <label className="block text-xs font-bold text-[#1C1917] mb-1.5">تصویر متناسب با آیتم:</label>

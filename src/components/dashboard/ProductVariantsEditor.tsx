@@ -1,0 +1,16 @@
+import React,{useState} from 'react';
+import type {Product} from '../../types';
+import {useApp} from '../../context/AppContext';
+import {OrderDialog} from '../common/OrderDialog';
+import {variantGroup,buildVariants,type VariantDraft} from '../../lib/productVariants';
+export function VariantFields({rows,setRows,title,setTitle,basePrice}:{rows:VariantDraft[];setRows:(r:VariantDraft[])=>void;title:string;setTitle:(s:string)=>void;basePrice:number}){
+ return <div className="manager-variants"><div className="manager-variants-heading"><b>مدل‌های محصول</b><button type="button" disabled={rows.length>=50} onClick={()=>setRows([...rows,{id:crypto.randomUUID(),name:'',price:String(basePrice)}])}>+ افزودن مدل</button></div><p>مثل یک‌نفره / دونفره یا هلویی / لیمویی. قیمت نهایی هر مدل را به تومان وارد کنید؛ حداقل برابر قیمت پایه.</p>{rows.length>0&&<><label>عنوان انتخاب<input aria-label="عنوان مدل‌های محصول" maxLength={80} value={title} onChange={e=>setTitle(e.target.value)}/></label>{rows.map((row,i)=><div className="manager-variant-row" key={row.id}><input required aria-label={'نام مدل '+(i+1)} maxLength={80} placeholder="مثلاً دونفره" value={row.name} onChange={e=>setRows(rows.map(r=>r.id===row.id?{...r,name:e.target.value}:r))}/><input required aria-label={'قیمت مدل '+(i+1)+' به تومان'} type="number" min={basePrice} step="1" value={row.price} onChange={e=>setRows(rows.map(r=>r.id===row.id?{...r,price:e.target.value}:r))}/><button type="button" aria-label={'حذف مدل '+(i+1)} onClick={()=>setRows(rows.filter(r=>r.id!==row.id))}>×</button></div>)}</>}</div>;
+}
+export function ProductVariantsEditor({product}:{product:Product}){
+ const {updateProductOptions,showToast}=useApp();
+ const [open,setOpen]=useState(false),[rows,setRows]=useState<VariantDraft[]>([]),[title,setTitle]=useState('اندازه / طعم'),[popular,setPopular]=useState(false),[busy,setBusy]=useState(false);
+ const [version,setVersion]=useState<number|undefined>();
+ function edit(){const g=variantGroup(product);setRows(g?.options.map(o=>({id:o.id,name:o.name,price:String(product.price+o.extraPrice)}))||[]);setTitle(g?.title||'اندازه / طعم');setPopular(!!product.isPopular);setVersion(product.version);setOpen(true);}
+ async function save(e:React.FormEvent){e.preventDefault();if(busy)return;try{const old=variantGroup(product),group=buildVariants(rows,product.price,title,old?.id);setBusy(true);await updateProductOptions(product.id,{optionGroups:[...(group?[group]:[]),...(product.optionGroups||[]).filter(g=>g.id!==old?.id)],isPopular:popular,expectedVersion:version});setOpen(false);}catch(e){showToast((e as Error).message);}finally{setBusy(false);}}
+ return <><button className="manager-variant-edit" type="button" onClick={edit}>مدل‌ها و پرطرفدارها{variantGroup(product)?' · '+variantGroup(product)!.options.length+' مدل':''}</button>{open&&<OrderDialog title={product.name} onClose={()=>{if(!busy)setOpen(false);}}><form onSubmit={save}><VariantFields rows={rows} setRows={setRows} title={title} setTitle={setTitle} basePrice={product.price}/><label className="manager-popular-toggle"><input type="checkbox" checked={popular} onChange={e=>setPopular(e.target.checked)}/>نمایش در پرطرفدارها</label><button className="staff-primary" disabled={busy} type="submit">{busy?'در حال ذخیره…':'ذخیره تغییرات'}</button></form></OrderDialog>}</>;
+}

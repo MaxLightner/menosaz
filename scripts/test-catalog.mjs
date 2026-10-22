@@ -77,5 +77,16 @@ if(process.argv.includes('--platform')) {
  await db.exec(await readFile(new URL('../supabase/migrations/202610210004_order_history_privacy_indexes.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/202610210005_public_business_projection.sql',import.meta.url),'utf8'));
  await (await import('./test-security-regressions.mjs')).runSecurityRegressionTests(db);
+ const variantMigration=(await readdir(new URL('supabase/migrations/',root))).find(n=>n.endsWith('_menu_variants_popular.sql'));
+ await db.exec(await readFile(new URL('supabase/migrations/'+variantMigration,root),'utf8'));
+ const selected=(await db.query("select business_id,id from products where status='active' limit 1")).rows[0];
+ const patch={isPopular:true,optionGroups:[{id:'variant-test',title:'اندازه',required:true,options:[{id:'one',name:'یک‌نفره',extraPrice:0},{id:'two',name:'دونفره',extraPrice:100000}]}]};
+ const updated=(await db.query('select catalog_put_product($1,$2,$3) p',[selected.business_id,selected.id,patch])).rows[0].p;
+ assert.equal(updated.isPopular,true);assert.equal(updated.optionGroups[0].options[1].extraPrice,100000);
+ const persisted=(await db.query('select catalog_put_product($1,$2,$3) p',[selected.business_id,selected.id,{price:updated.price+1000}])).rows[0].p;
+ assert.equal(persisted.isPopular,true);assert.deepEqual(persisted.optionGroups,updated.optionGroups);
+ assert.equal((await db.query('select catalog_product($1,$2) p',['wrong-business',selected.id])).rows[0].p,null);
+ await assert.rejects(db.query('select catalog_put_product($1,$2,$3)',[selected.business_id,selected.id,{isPopular:'yes'}]),/پرطرفدار/);
+ console.log('PASS: product models and popular flag persistence, validation and tenant isolation');
 }
 await db.close();

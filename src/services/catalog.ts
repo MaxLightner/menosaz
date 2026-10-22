@@ -3,7 +3,7 @@ import {api} from './backend';
 import type {MenuDefinition} from '../types';
 
 export type CatalogCapabilities={catalogVersion:number;productLimit:number|null;products:number;menuLimit:number};
-export type MenuDraft={menuId?:string;name:string;kind:string;categories:{id?:string;name:string;items:{name:string;price:number;description?:string;isAvailable?:boolean;imageUrl?:string;prepTimeMinutes?:number;optionGroups?:unknown[]}[]}[]};
+export type MenuDraft={menuId?:string;name:string;kind:string;categories:{id?:string;name:string;items:{name:string;price:number;description?:string;isAvailable?:boolean;imageUrl?:string;prepTimeMinutes?:number;isPopular?:boolean;optionGroups?:unknown[]}[]}[]};
 export type PendingCommand={signature:string;requestId:string}|null;
 export function commandBody<T extends object>(body:T,pending:{current:PendingCommand}):T&{requestId:string}{
  const signature=JSON.stringify(body);
