@@ -2,6 +2,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import {billingRequest,publicSiteUrl} from './billing.ts';
 import {otpyRequest,nativePhoneSession} from './otpy.ts';
+import {aiMenuRequest} from './aiMenu.ts';
 import {productImageData} from '../../../src/lib/productImage.ts';
 const url=Deno.env.get('SUPABASE_URL')!,key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,anon=Deno.env.get('SUPABASE_ANON_KEY')!;
 const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -96,6 +97,11 @@ if(path==='/auth/logout'){if(uid){const mine=await db.rpc('mizato_staff_api',{p_
 if(path==='/presence'&&req.method==='POST'){const r=await db.rpc('menu_api_v2',{p_path:path,p_method:req.method,p_body:body,p_uid:uid});return reply(r.data?.data||{error:'درخواست نامعتبر'},r.data?.status||400);}
 if(path.startsWith('/billing/')){if(!uid)return reply({error:'ابتدا وارد حساب شو'},401);if(req.method!=='POST'||!['/billing/create','/billing/verify'].includes(path))return reply({error:'مسیر معتبر نیست'},404);const allowed=await db.rpc('menu_rate',{p_key:'billing-'+uid,p_max:12});if(allowed.data!==true)return reply({error:'کمی صبر کن و دوباره تلاش کن'},429);return reply(await billingRequest(db,uid,path,body));}
 if(!uid&&!['/health','/public/content','/public/menu','/public/feed','/public/resolve','/sessions/open','/sessions/status','/orders','/order-status','/calls'].includes(path))return reply({error:'ابتدا وارد حساب شو'},401);
+if(path.startsWith('/ai/menu/')){
+ if(req.method!=='POST'||!['/ai/menu/analyze','/ai/menu/commit'].includes(path))return reply({error:'مسیر معتبر نیست'},405);
+ if(!uid)return reply({error:'ورود مدیر لازم است'},401);
+ const result=await aiMenuRequest(db,uid,path,body);return reply(result.data,result.status);
+}
 if(path==='/admin/content-images'&&req.method==='POST'&&uid){
  let image;try{image=productImageData(body.dataUrl,true);}catch(error){return reply({error:error.message},400);}
  const ext=image.mime==='image/jpeg'?'jpg':image.mime==='image/png'?'png':'webp',id=crypto.randomUUID(),filename='platform/'+id+'.'+ext;
