@@ -87,7 +87,9 @@ export async function aiMenuRequest(db:any,uid:string,path:string,body:Record<st
   const images=body.images;
   if(!Array.isArray(images)||images.length<1||images.length>4||images.some(i=>typeof i!=='string'||i.length>900_000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(i)))
    return aiReply(400,{error:'یک تا چهار عکس JPG، PNG یا WebP با حجم مناسب انتخاب کن.'});
-  const key=Deno.env.get('OPENAI_API_KEY');
+  const resolved=await db.rpc('mizato_ai_key_runtime');
+  if(resolved.error)return aiReply(503,{error:'تنظیمات محرمانه سرویس قابل دریافت نیست.'});
+  const key=resolved.data||Deno.env.get('OPENAI_API_KEY');
   if(!key)return aiReply(503,{error:'سرویس تحلیل منو هنوز فعال نشده است.'});
   const minute=await db.rpc('menu_rate',{p_key:'ai-menu-minute:'+bid,p_max:2});
   if(minute.error||minute.data!==true)return aiReply(429,{error:'برای تحلیل مجدد کمی صبر کن.'});
