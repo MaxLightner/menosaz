@@ -1,5 +1,6 @@
 // AI-assisted onboarding is intentionally available only on a fresh, empty tenant.
 // All authorization and usage limits are enforced server-side. Do not persist the uploaded images.
+declare const Deno:{env:{get:(key:string)=>string|undefined}};
 type AiReply={status:number;data:Record<string,unknown>};
 const aiReply=(status:number,data:Record<string,unknown>):AiReply=>({status,data});
 const aiText=(v:unknown,max:number)=>typeof v==='string'?v.trim().slice(0,max):'';
