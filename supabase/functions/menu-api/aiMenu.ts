@@ -17,7 +17,7 @@ const aiSchema={
   }}}
  }
 };
-function reviewAiMenu(raw:unknown){
+export function reviewAiMenu(raw:unknown){
  if(!raw||typeof raw!=='object'||!Array.isArray((raw as any).categories))throw Error('نتیجه تحلیل نامعتبر است.');
  const categories=(raw as any).categories.slice(0,30).map((c:any)=>({
   name:aiText(c.name,60)||'سایر',
@@ -48,7 +48,7 @@ async function aiFreshBusiness(db:any,uid:string):Promise<{bid?:string;error?:Ai
   return {error:aiReply(403,{error:'ساخت منو با عکس فقط برای حساب تازه و منوی خالی فعال است. برای تغییر منوی موجود با پشتیبانی تماس بگیر.'})};
  return {bid};
 }
-function aiCommitBody(body:Record<string,any>){
+export function aiCommitBody(body:Record<string,any>){
  if(body.menuId!=='main'||!aiText(body.name,60)||!/^[0-9a-f-]{36}$/i.test(String(body.requestId||'')))throw Error('اطلاعات منو نامعتبر است.');
  if(!Array.isArray(body.categories)||body.categories.length<1||body.categories.length>30)throw Error('دسته‌های منو معتبر نیست.');
  let count=0;
