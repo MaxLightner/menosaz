@@ -1,4 +1,5 @@
 import React,{useMemo,useState,useEffect,useRef} from 'react';
+import {AiMenuImport} from './AiMenuImport';
 import {api} from '../../services/backend';
 import {useApp} from '../../context/AppContext';
 import {buildMenu,type CatalogCapabilities,type PendingCommand} from '../../services/catalog';
@@ -7,7 +8,7 @@ import {sourcePhotoForItem,suggestedMenuImage} from '../../services/menuImages';
 import {displayImagePath} from '../../lib/imagePath';
 
 type CategoryDraft={id:string;name:string;count:number;items:string[]};
-type Step='welcome'|'catalog'|'categories'|'items';
+type Step='welcome'|'catalog'|'categories'|'items'|'ai';
 const selectionKey=(c:string,n:string)=>c+'::'+n;
 const emptyCategory=():CategoryDraft=>({id:crypto.randomUUID(),name:'',count:3,items:['','','']});
 const maxStarter=12;
@@ -113,6 +114,7 @@ export function MenuSetupWizard(){
   return <div className="menu-wizard-backdrop" role="dialog" aria-modal="true" aria-labelledby="menu-wizard-title">
     <section className="menu-wizard">
       <button type="button" className="menu-wizard-close" aria-label="بستن" onClick={()=>setOpen(false)}>×</button>
+      {step==='ai'&&<AiMenuImport menuId={activeMenuId} menuName={menuName} productLimit={remaining} onCancel={()=>{setError('');setStep('welcome');}} onSuccess={()=>setOpen(false)}/>}
       {step==='welcome'&&<>
         <div className="wizard-mark"><span className="material-symbols-outlined">restaurant_menu</span></div>
         <span className="wizard-kicker">منوساز میزاتو · مناسب کسب‌وکارهای گوناگون</span>
@@ -125,6 +127,7 @@ export function MenuSetupWizard(){
           <button type="button" className="wizard-primary" disabled={busy||!capabilities||remaining===0} onClick={()=>finish(templates.map(g=>({category:g.name,items:g.items.filter(n=>defaultKeys.includes(selectionKey(g.name,n)))})))}>{busy?'در حال ساخت…':`ساخت نمونه پیشنهادی (${defaultKeys.length} آیتم)`}</button>
           <button type="button" className="wizard-secondary" onClick={()=>{setError('');setStep('catalog');}}>انتخاب از فهرست کامل غذاها و خدمات</button>
           <button type="button" className="wizard-secondary" onClick={()=>{setError('');setStep('categories');}}>ساخت کاملاً دستی</button>
+          {activeMenuId==='main'&&<button type="button" className="wizard-secondary" onClick={()=>{setError('');setStep('ai');}}>ساخت خودکار از عکس منوی فعلی</button>}
         </div>
       </>}
       {step==='catalog'&&<>
