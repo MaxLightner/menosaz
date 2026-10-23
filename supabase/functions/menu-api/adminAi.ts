@@ -15,16 +15,17 @@ export async function adminAiSettings(db:any,uid:string,path:string,method:strin
  if(!((path==='/admin/ai-settings'&&['GET','POST'].includes(method))||(path==='/admin/ai-settings/test'&&method==='POST')))
   return respond(405,{error:'روش درخواست معتبر نیست.'});
  const action=path==='/admin/ai-settings'&&method==='POST'?'save':'status';
+ const submittedKey=typeof body.apiKey==='string'?body.apiKey.trim():'';
  if(action==='save'){
-  if(typeof body.apiKey!=='string'||body.apiKey.length<20||body.apiKey.length>512||!body.apiKey.startsWith('sk-')||/\s/.test(body.apiKey))
-   return respond(400,{error:'کلید API معتبر نیست.'});
+  if(submittedKey.length<20||submittedKey.length>512||!submittedKey.startsWith('sk-')||/\s/.test(submittedKey))
+   return respond(400,{error:'کلید API معتبر نیست؛ کلید کامل OpenAI را بدون فاصله اضافی وارد کن.'});
   const limiter=await db.rpc('menu_rate',{p_key:'admin-ai-key-update:'+uid,p_max:4});
   if(limiter.error||limiter.data!==true)return respond(429,{error:'تعداد تلاش زیاد است؛ کمی بعد دوباره امتحان کن.'});
  }
  // This RPC checks platform_roles + the account's active status, in addition to
  // access_authorize at the API boundary. No secret is ever returned here.
- const result=await db.rpc('mizato_admin_ai_config',{p_uid:uid,p_action:action,p_value:action==='save'?body.apiKey:null});
- if(result.error)return respond(action==='save'?400:403,{error:action==='save'?'ذخیره کلید انجام نشد؛ قالب کلید را بررسی کن.':'اجازه مشاهده تنظیمات وجود ندارد.'});
+ const result=await db.rpc('mizato_admin_ai_config',{p_uid:uid,p_action:action,p_value:action==='save'?submittedKey:null});
+ if(result.error)return respond(action==='save'?503:403,{error:action==='save'?'ذخیره امن کلید در سرور انجام نشد؛ این خطا الزاماً مربوط به قالب کلید نیست. دوباره تلاش کن.':'اجازه مشاهده تنظیمات وجود ندارد.'});
  const stored=result.data;
  const source=stored?.configured?'panel':Deno.env.get('OPENAI_API_KEY')?'server':'none';
  if(path==='/admin/ai-settings/test'){
