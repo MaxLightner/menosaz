@@ -1,6 +1,7 @@
 import {catalogImagePath} from '../lib/imagePath';
 import {CLOUD_API} from '../services/cloudConfig';
 import {addCartItem,type CartItem} from '../lib/cart';
+import {invoicePreview} from '../lib/invoice';
 import {viewFromSearch} from '../lib/navigation';
 import {orderAlerts,type AlertSnapshot} from '../lib/orderAlerts';
 import {ensureGuestSession,savedGuestSession,resetGuestSession} from '../services/guestSession';
@@ -237,7 +238,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     orderBusinessId:string='pich-shemroon'
   ): Promise<string> => {
     if(orderBusinessId.startsWith('demo-'))throw Error('این منو نمونه است؛ برای دریافت سفارش آن را در حساب خودت بساز.');
-const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw Error('سرویس‌پوینت پیدا نشد');const guest=await ensureGuestSession(business.id,point.id,tableNumber);const signature=JSON.stringify([guest.sessionId,tableNumber,customerName,customerNotes,items]);if(pendingGuest.current?.signature!==signature)pendingGuest.current={signature,token:guest.guestToken,key:crypto.randomUUID()};const grant=pendingGuest.current;const o=await api<Order>('/orders',{businessId:business.id,sessionId:guest.sessionId,tableNumber,customerName,customerNotes,idempotencyKey:grant.key,guestToken:guest.guestToken,items:items.map(i=>({productId:i.product.id,quantity:i.quantity,notes:i.notes,selectedOptions:i.selectedOptions}))});pendingGuest.current=null;setOrders(prev=>prev.some(x=>x.id===o.id)?prev:[...prev,o]);setCart([]);showToast('سفارش ثبت شد');return o.id;
+const point=servicePoints.find(p=>p.tableNumber===tableNumber);if(!point)throw Error('سرویس‌پوینت پیدا نشد');const guest=await ensureGuestSession(business.id,point.id,tableNumber);const expectedTotalToman=invoicePreview(items.reduce((sum,item)=>sum+item.itemTotal,0),business.billing).totalAmount;const signature=JSON.stringify([guest.sessionId,tableNumber,customerName,customerNotes,items,expectedTotalToman]);if(pendingGuest.current?.signature!==signature)pendingGuest.current={signature,token:guest.guestToken,key:crypto.randomUUID()};const grant=pendingGuest.current;const o=await api<Order>('/orders',{businessId:business.id,sessionId:guest.sessionId,tableNumber,customerName,customerNotes,idempotencyKey:grant.key,guestToken:guest.guestToken,expectedTotalToman,items:items.map(i=>({productId:i.product.id,quantity:i.quantity,notes:i.notes,selectedOptions:i.selectedOptions}))});pendingGuest.current=null;setOrders(prev=>prev.some(x=>x.id===o.id)?prev:[...prev,o]);setCart([]);showToast('سفارش ثبت شد');return o.id;
   };
   // 3. Waiter approves order (pending_waiter -> cooking) or Kitchen sets ready
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
