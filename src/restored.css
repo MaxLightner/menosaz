@@ -146,3 +146,100 @@
 .mizato-mobile-product-footer{flex-wrap:wrap;gap:8px}
 
 .menu-food-ingredients{margin:0;font-size:12px;line-height:1.8;color:var(--menu-ink);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+
+/* Tablet and desktop customer menu layout: expand beyond the mobile phone canvas. */
+@media (min-width: 741px) {
+  .restored-menu {
+    width: 100%;
+    max-width: 1200px;
+    min-height: 100dvh;
+    margin-inline: auto;
+    padding-bottom: 110px;
+    box-sizing: border-box;
+  }
+  .menu-header,
+  .menu-search,
+  .menu-hero,
+  .menu-categories,
+  .menu-view-switch,
+  .menu-list-title,
+  .menu-photo-list,
+  .menu-overview,
+  .menu-footer,
+  .customer-menu-tabs,
+  .menu-status-message,
+  .mizato-feedback-banner {
+    width: 100%;
+    max-width: 1180px;
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
+  .menu-header { padding: 16px 24px 12px; }
+  .menu-hero { padding: 26px 28px 12px; }
+  .menu-hero h1 { font-size: clamp(34px, 3.2vw, 48px); }
+  .menu-categories {
+    position: sticky;
+    top: 38px;
+    justify-content: center;
+    flex-wrap: wrap;
+    overflow: visible;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .menu-categories button { width: 88px; flex: 0 0 88px; font-size: 14px; }
+  .menu-categories img { width: 66px; height: 66px; }
+  .menu-view-switch { padding-inline: 24px; gap: 12px; }
+  .menu-view-switch button { max-width: 360px; }
+  .menu-list-title { padding: 16px 28px 6px; }
+  .menu-section-heading { padding-inline: 28px; }
+  .menu-photo-list.menu-continuous > section > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 22px;
+    padding: 0 28px;
+  }
+  .menu-overview.menu-continuous > section > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 20px;
+    padding: 0 28px;
+  }
+  .menu-food { margin: 0; gap: 12px; padding: 16px 0; min-width: 0; }
+  .menu-food-photo { width: clamp(96px, 13vw, 145px); aspect-ratio: 1; flex-shrink: 0; }
+  .menu-food-info { min-width: 0; gap: 7px; }
+  .menu-food-name { font-size: 17px !important; }
+  .menu-food-ingredients {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .menu-food-bottom > span { font-size: 18px; }
+  .menu-bottom-bar { max-width: 850px; }
+}
+@media (min-width: 1025px) {
+  .menu-photo-list.menu-continuous > section > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 28px;
+    padding-inline: 32px;
+  }
+  .menu-overview.menu-continuous > section > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding-inline: 32px;
+  }
+  .menu-food-photo { width: clamp(100px, 10vw, 150px); }
+}
+@media (min-width: 741px) and (max-width: 899px) {
+  .restored-menu { max-width: 100%; }
+  .menu-header { padding-inline: 20px; }
+  .menu-hero { padding-inline: 20px; }
+  .menu-list-title { padding-inline: 20px; }
+  .menu-section-heading { padding-inline: 20px; }
+  .menu-photo-list.menu-continuous > section > div,
+  .menu-overview.menu-continuous > section > div { padding-inline: 20px; gap: 0 16px; }
+  .menu-food-photo { width: clamp(88px, 12vw, 112px); }
+  .menu-food-name { font-size: 16px !important; }
+  .menu-food-bottom > span { font-size: 16px; }
+}
