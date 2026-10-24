@@ -45,9 +45,9 @@ export const MobileDashboard: React.FC = () => {
     .reduce((acc, o) => acc + o.totalAmount, 0);
 
   return (
-    <div className="bg-[#F6F7F4] min-h-screen flex justify-center text-[#29372E] pb-24 antialiased selection:bg-[#51805A] selection:text-white">
+    <div className="bg-[#F6F7F4] min-h-screen flex justify-center text-[#29372E] pb-24 antialiased selection:bg-[#51805A] selection:text-white manager-mobile-shell">
       {/* Mobile Frame Container max-w-md */}
-      <div className="w-full max-w-[420px] min-h-screen bg-[#FFFFFF] border-x border-[#DBE2D5] flex flex-col relative shadow-lg">
+      <div className="w-full max-w-[420px] min-h-screen bg-[#FFFFFF] border-x border-[#DBE2D5] flex flex-col relative shadow-lg manager-mobile-frame">
         
         {/* 1. COMPACT TOP APP BAR */}
         <header className="sticky top-0 z-40 bg-[#FFFFFF]/95 backdrop-blur-md px-4 py-2.5 border-b border-[#DBE2D5] shadow-xs flex items-center justify-between">
@@ -92,7 +92,7 @@ export const MobileDashboard: React.FC = () => {
         <div className="px-4 pt-2"><label className="flex items-center gap-2 text-xs text-[#506354]">بخش پنل <select aria-label="انتخاب بخش پنل موبایل" className="flex-1 border border-[#DBE2D5] rounded-lg bg-white p-2" value={activeTab} onChange={e=>setActiveTab(e.target.value as typeof activeTab)}><option value="menu">منو و قیمت‌ها</option><option value="overview">نمای کلی</option><option value="orders">سفارش‌ها</option><option value="tables">میزها</option><option value="settings">تنظیمات</option></select></label></div>
 
         {/* 2. MAIN MOBILE CONTENT */}
-        <main className="flex-1 px-3.5 pt-3 space-y-3.5">
+        <main className="flex-1 px-3.5 pt-3 space-y-3.5 manager-mobile-content">
           
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
@@ -451,7 +451,7 @@ export const MobileDashboard: React.FC = () => {
         {/* 7. FIXED MOBILE BOTTOM NAVIGATION BAR */}
         <nav 
           aria-label="نویگیشن اصلی موبایل" 
-          className="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto z-40 bg-[#FFFFFF]/95 backdrop-blur-lg px-2 py-1.5 border-t border-[#DBE2D5] shadow-lg flex items-center justify-around"
+          className="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto z-40 bg-[#FFFFFF]/95 backdrop-blur-lg px-2 py-1.5 border-t border-[#DBE2D5] shadow-lg flex items-center justify-around manager-mobile-bottom-nav"
         >
           {/* Tab 1: Overview */}
           <button 
