@@ -1,4 +1,6 @@
 import React,{useState} from 'react';
+import {InvoiceBreakdownView} from '../common/InvoiceBreakdownView';
+import {invoiceFromOrder} from '../../lib/invoice';
 import type {Order} from '../../types';
 import {api} from '../../services/backend';
 
@@ -33,7 +35,7 @@ export function OrderHistory(){
   {open&&<div className="mt-3 space-y-2">
    {orders.map(o=><article className="rounded-lg border border-[#E1E8DD] p-3 flex items-center justify-between gap-3 flex-wrap" key={o.id}>
     <div><b className="text-sm">میز {o.tableNumber} · سفارش {o.orderNumber}</b><div className="text-xs text-[#64715E]">{new Date(o.createdAt).toLocaleString('fa-IR')} · {o.status==='cancelled'?'لغوشده':'تحویل‌شده'}</div><div className="text-xs mt-1">{o.items.map(i=>i.quantity+' × '+i.productName).join('، ')}</div></div>
-    <strong className="text-xs">{new Intl.NumberFormat('fa-IR').format(o.totalAmount)} تومان</strong>
+    <div><strong className="text-xs">{new Intl.NumberFormat('fa-IR').format(o.totalAmount)} تومان</strong><details><summary className="text-xs cursor-pointer">ریز فاکتور</summary><InvoiceBreakdownView invoice={invoiceFromOrder(o)} compact/></details></div>
    </article>)}
    {error&&<p role="alert" className="text-red-700 text-xs">{error}</p>}
    {!orders.length&&!busy&&!error&&<p className="text-xs text-[#64715E]">هنوز سفارش بسته‌شده‌ای ثبت نشده است.</p>}
