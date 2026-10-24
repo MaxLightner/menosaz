@@ -1,5 +1,6 @@
 import {ProductVariantsEditor} from './ProductVariantsEditor';
 import {OrderHistory} from './OrderHistory';
+import {BillingSettingsEditor} from './BillingSettingsEditor';
 import {RemoveProduct} from './RemoveProduct';
 import {PointsPanel} from './PointsPanel';
 import {ProductPhotoButton} from '../common/ProductPhotoButton';
@@ -423,7 +424,7 @@ export const MobileDashboard: React.FC = () => {
           {/* TAB 5: SETTINGS */}
           {activeTab === 'settings' && (
             <div className="p-4 bg-[#FFFFFF] border border-[#DBE2D5] rounded-2xl space-y-3">
-              <h2 className="font-bold text-sm text-[#29372E]">تنظیمات مجموعه</h2>
+              <h2 className="font-bold text-sm text-[#29372E]">تنظیمات مجموعه</h2><BillingSettingsEditor/>
               <div className="space-y-2 text-xs">
                 <div>
                   <label className="text-[#506354] block">نام مجموعه:</label>
