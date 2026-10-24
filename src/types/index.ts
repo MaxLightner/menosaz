@@ -1,3 +1,5 @@
+import type {BillingSettings,InvoiceBreakdown} from '../lib/invoice';
+
 export type Role = 'admin' | 'manager' | 'waiter' | 'kitchen' | 'customer';
 
 export type AppView = 
@@ -18,6 +20,7 @@ export type DeliveryStatus = 'pending' | 'delivered';
 export type PaymentStatus = 'unpaid' | 'paid_online' | 'paid_pos' | 'paid_cash';
 
 export interface Business {
+  billing?:BillingSettings;
   menuPalette?:string;
   menuPaper?:number;
   menuBackgroundImage?:string;
@@ -113,6 +116,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  invoice?:InvoiceBreakdown;
   kitchenReceivedAt?:string|null;
   deliveredBy?:string|null;
   version?:number;
