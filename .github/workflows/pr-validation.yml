@@ -24,4 +24,5 @@ jobs:
       - run: pnpm run test:customer
       - run: pnpm exec tsx scripts/test-ai-menu-import.ts
       - run: pnpm exec tsx scripts/test-admin-ai-settings.ts
+      - run: pnpm exec tsx scripts/test-invoice.ts
       - run: pnpm run build
